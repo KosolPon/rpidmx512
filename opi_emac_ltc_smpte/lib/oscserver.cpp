@@ -30,6 +30,7 @@
 
 #include "oscserver.h"
 #include "osc.h"
+#include "oscmessage.h"
 
 #include "network.h"
 
@@ -68,6 +69,9 @@ static const char sGoto[] ALIGNED = "goto";
 
 static const char sDirection[] ALIGNED = "direction";
 #define DIRECTION_LENGTH (sizeof(sDirection)/sizeof(sDirection[0]) - 1)
+
+static const char sPitch[] ALIGNED = "pitch";
+#define PITCH_LENGTH (sizeof(sPitch)/sizeof(sPitch[0]) - 1)
 
 // "hh/mm/ss/ff" -> length = 11
 #define VALUE_LENGTH		11
@@ -114,7 +118,17 @@ void OSCServer::Run(void) {
 		DEBUG_PUTS(m_pBuffer);
 		DEBUG_PRINTF("%d,%d %s", (int) nCommandLength, m_nPathLength, &m_pBuffer[m_nPathLength]);
 
-		if (memcmp(&m_pBuffer[m_nPathLength], sStart, START_LENGTH) == 0) {
+		if (memcmp(&m_pBuffer[m_nPathLength], sPitch, PITCH_LENGTH) == 0) {
+			OSCMessage Msg(m_pBuffer, nBytesReceived);
+
+			const float fValue = Msg.GetFloat(0);
+
+			DEBUG_PRINTF("fValue=%f", fValue);
+
+			LtcGenerator::Get()->ActionSetPitch(fValue);
+
+			DEBUG_PUTS("ActionSetPitch");
+		} else if (memcmp(&m_pBuffer[m_nPathLength], sStart, START_LENGTH) == 0) {
 			if ((nCommandLength == (m_nPathLength + START_LENGTH)) ) {
 
 				LtcGenerator::Get()->ActionStart();
