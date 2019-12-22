@@ -44,15 +44,9 @@ public:
 	void Handler(const struct TTCNetTimeCode *pTimeCode);
 
 private:
-	void HandleUdpRequest(void);
-
-private:
 	alignas(uint32_t) struct TLtcDisabledOutputs *m_ptLtcDisabledOutputs;
 	alignas(uint32_t) struct _midi_send_tc m_tMidiTimeCode;
 	uint32_t m_nTimeCodePrevious;
-	int m_nHandle;
-	alignas(uint32_t) uint8_t m_Buffer[64];
-	int m_nBytesReceived;
 };
 
 #endif /* H3_TCNETREADER_H_ */
