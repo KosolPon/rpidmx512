@@ -55,6 +55,7 @@
 #include "tcnet.h"
 #include "tcnetparams.h"
 #include "tcnettimecode.h"
+#include "tcnetdisplay.h"
 
 #include "ntpserver.h"
 #include "ntpclient.h"
@@ -88,8 +89,6 @@
 #include "firmwareversion.h"
 
 #include "software_version.h"
-
-static const char sFps[4][3] = { "24", "25", "29", "30" };
 
 extern "C" {
 
@@ -283,7 +282,7 @@ void notmain(void) {
 		rtpMidi.AddServiceRecord(0, MDNS_SERVICE_CONFIG, 0x2905);
 	}
 
-	const bool bRunOSCServer = ((source == LTC_READER_SOURCE_INTERNAL || source == LTC_READER_SOURCE_SYSTIME) && ltcParams.IsOscEnabled());
+	const bool bRunOSCServer = ((source == LTC_READER_SOURCE_TCNET || source == LTC_READER_SOURCE_INTERNAL || source == LTC_READER_SOURCE_SYSTIME) && ltcParams.IsOscEnabled());
 
 	if (bRunOSCServer) {
 		bool isSet;
@@ -336,15 +335,7 @@ void notmain(void) {
 	display.PutString(SourceSelectConst::SOURCE[source]);
 
 	if (source == LTC_READER_SOURCE_TCNET) {
-		display.PutString(" ");
-		if (tcnet.GetLayer() != TCNET_LAYER_UNDEFINED) {
-			display.PutChar('L');
-			display.PutChar(TCNet::GetLayerName(tcnet.GetLayer()));
-		} else {
-			display.PutString("SMPTE");
-		}
-		display.PutString(" F");
-		display.PutString(sFps[tcnet.GetTimeCodeType()]);
+		TCNetDisplay::Show();
 	}
 
 	ltcOutputs.Print();
