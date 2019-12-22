@@ -27,6 +27,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <assert.h>
+#include <tcnetdisplay.h>
 
 #include "oscserver.h"
 #include "osc.h"
@@ -38,8 +39,6 @@
 #include "h3/systimereader.h"
 
 #include "tcnet.h"
-#include "tcnetdisplay.h"
-
 #include "debug.h"
 
 #ifndef ALIGNED
@@ -231,9 +230,9 @@ void OSCServer::Run(void) {
 					TCNetDisplay::Show();
 
 					DEBUG_PRINTF("*/tcnet/layer/%c -> %d", m_pBuffer[nOffset], (int) tLayer);
-				}
 
-				return;
+					return;
+				}
 			}
 
 			if (nCommandLength == (m_nPathLength + TCNET_LENGTH + TCNETTYPE_LENGTH)) {
@@ -264,6 +263,8 @@ void OSCServer::Run(void) {
 					}
 
 					DEBUG_PRINTF("*/tcnet/type -> %d", nValue);
+
+					return;
 				}
 			}
 		}
