@@ -268,7 +268,7 @@ void notmain(void) {
 		rtpMidiReader.Start();
 		break;
 	case LTC_READER_SOURCE_SYSTIME:
-		sysTimeReader.Start();
+		sysTimeReader.Start(ltcParams.IsAutoStart());
 		break;
 	default:
 		ltcReader.Start();
@@ -281,6 +281,10 @@ void notmain(void) {
 		rtpMidi.Start();
 		rtpMidi.AddServiceRecord(0, MDNS_SERVICE_CONFIG, 0x2905);
 	}
+
+	/**
+	 * The OSC Server is running when enabled AND source = TCNet OR Internal OR System-Time
+	 */
 
 	const bool bRunOSCServer = ((source == LTC_READER_SOURCE_TCNET || source == LTC_READER_SOURCE_INTERNAL || source == LTC_READER_SOURCE_SYSTIME) && ltcParams.IsOscEnabled());
 

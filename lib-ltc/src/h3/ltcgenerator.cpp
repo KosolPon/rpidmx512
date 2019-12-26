@@ -23,10 +23,6 @@
  * THE SOFTWARE.
  */
 
-#ifdef NDEBUG
-#undef NDEBUG
-#endif
-
 #include <stdint.h>
 #include <string.h>
 #include <stdio.h>
@@ -92,7 +88,7 @@ static const char sDirection[] ALIGNED = "direction";
 static const char sPitch[] ALIGNED = "pitch";
 #define PITCH_LENGTH (sizeof(sPitch)/sizeof(sPitch[0]) - 1)
 
-enum tUdpPort {
+enum TUdpPort {
 	UDP_PORT = 0x5443
 };
 
@@ -435,18 +431,13 @@ void LtcGenerator::HandleUdpRequest(void) {
 		return;
 	}
 
-	if (__builtin_expect((memcmp("ltc", m_Buffer, 3) != 0), 0)) {
+	if (__builtin_expect((memcmp("ltc!", m_Buffer, 4) != 0), 0)) {
 		return;
 	}
 
 	if (m_Buffer[m_nBytesReceived - 1] == '\n') {
 		DEBUG_PUTS("\'\\n\'");
 		m_nBytesReceived--;
-	}
-
-	if (m_Buffer[3] != '!') {
-		DEBUG_PUTS("Invalid command");
-		return;
 	}
 
 	if (memcmp(&m_Buffer[4], sStart, START_LENGTH) == 0) {
