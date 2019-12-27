@@ -172,11 +172,13 @@ void notmain(void) {
 	}
 
 	DisplayMax7219 displayMax7219(ltcDisplayParams.GetMax7219Type());
+
 	if(!tLtcDisabledOutputs.bMax7219) {
 		displayMax7219.Init(ltcDisplayParams.GetMax7219Intensity());
 	}
 
 	DisplayWS28xx displayWS28xx(ltcDisplayParams.GetLedType());
+
 	if (!tLtcDisabledOutputs.bWS28xx){
 		ltcDisplayParams.Set(&displayWS28xx);
 		displayWS28xx.Init(ltcDisplayParams.GetGlobalBrightness());
@@ -185,20 +187,26 @@ void notmain(void) {
 	display.ClearLine(3);
 	display.Printf(3, IPSTR "/%d %c", IP2STR(nw.GetIp()), (int) nw.GetNetmaskCIDR(), nw.IsDhcpKnown() ? (nw.IsDhcpUsed() ? 'D' : 'S') : ' ');
 
-	// Select the source
-
 	TLtcReaderSource source = ltcParams.GetSource();
+
+	/**
+	 * Select the source using buttons/rotary
+	 */
+
+	const bool IsAutoStart = ((source == LTC_READER_SOURCE_SYSTIME) && ltcParams.IsAutoStart());
 
 	SourceSelect sourceSelect(source);
 
-	if (sourceSelect.Check()) {
+	if (sourceSelect.Check() && !IsAutoStart) {
 		while (sourceSelect.Wait(source)) {
 			nw.Run();
 			lb.Run();
 		}
 	}
 
-	// From here work with source selection
+	/**
+	 * From here work with source selection
+	 */
 
 	display.Status(DISPLAY_7SEGMENT_MSG_INFO_NONE);
 
@@ -246,7 +254,9 @@ void notmain(void) {
 		ltcSender.Start();
 	}
 
-	// Start the reader
+	/**
+	 * Start the reader
+	 */
 	switch (source) {
 	case LTC_READER_SOURCE_ARTNET:
 		node.SetTimeCodeHandler(&artnetReader);
@@ -291,9 +301,11 @@ void notmain(void) {
 	if (bRunOSCServer) {
 		bool isSet;
 		const uint16_t nPort = ltcParams.GetOscPort(isSet);
+
 		if (isSet) {
 			oscServer.SetPortIncoming(nPort);
 		}
+
 		oscServer.Start();
 		oscServer.Print();
 		rtpMidi.AddServiceRecord(0, MDNS_SERVICE_OSC, oscServer.GetPortIncoming(), "type=server");
@@ -312,9 +324,11 @@ void notmain(void) {
 	tcnet.Print();
 	midi.Print();
 	rtpMidi.Print();
+
 	if(!tLtcDisabledOutputs.bMax7219) {
 		displayMax7219.Print();
 	}
+
 	if (!tLtcDisabledOutputs.bWS28xx){
 		displayWS28xx.Print();
 	}
@@ -399,16 +413,16 @@ void notmain(void) {
 			ntpServer.Run();
 		}
 
-		if (sourceSelect.IsConnected()) {
-			sourceSelect.Run();
-		}
-
 		if (tLtcDisabledOutputs.bDisplay) {
 			display.Run();
 		}
 
 		if (!tLtcDisabledOutputs.bWS28xx){
 			displayWS28xx.Run();
+		}
+
+		if (sourceSelect.IsConnected()) {
+			sourceSelect.Run();
 		}
 
 		ntpClient.Run();
