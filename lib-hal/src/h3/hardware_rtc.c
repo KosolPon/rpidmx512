@@ -23,10 +23,6 @@
  * THE SOFTWARE.
  */
 
-#ifdef NDEBUG
-#undef NDEBUG
-#endif
-
 #include <assert.h>
 
 #include "c/hardware.h"
@@ -46,8 +42,8 @@ void hardware_rtc_set(const struct hardware_time *tm_hw) {
 	tm_rtc.tm_min = (int) tm_hw->minute;
 	tm_rtc.tm_sec = (int) tm_hw->second;
 	tm_rtc.tm_mday = (int) tm_hw->day;
-	tm_rtc.tm_mon = (int) tm_hw->month; // + 1;
-	tm_rtc.tm_year = (int) tm_hw->year; // - 100;	// RTC stores 2 digits only
+	tm_rtc.tm_mon = (int) tm_hw->month;
+	tm_rtc.tm_year = (int) tm_hw->year;
 
 	DEBUG_PRINTF("%.4d/%.2d/%.2d %.2d:%.2d:%.2d", tm_rtc.tm_year, tm_rtc.tm_mon, tm_rtc.tm_mday, tm_rtc.tm_hour, tm_rtc.tm_min, tm_rtc.tm_sec);
 
