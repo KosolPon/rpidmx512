@@ -140,6 +140,8 @@ public:
 		return "www.orangepi-dmx.org";
 	}
 
+	void SoftReset(void);
+
 public:
 	 static Hardware* Get(void) {
 		return s_pThis;

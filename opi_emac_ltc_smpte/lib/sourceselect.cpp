@@ -274,15 +274,15 @@ void SourceSelect::HandleActionSelect(void) {
 		while (SpiFlashStore::Get()->Flash())
 			;
 
-		printf("Rebooting ...\n");
+		printf("SoftReset ...\n");
 
 		i2c_set_address(MCP23017_I2C_ADDRESS);
 		i2c_write_reg_uint8(MCP23X17_GPIOB, 0xFF);
 
 		Display::Get()->Cls();
-		Display::Get()->TextStatus("Rebooting ...", DISPLAY_7SEGMENT_MSG_INFO_REBOOTING);
+		Display::Get()->TextStatus("SoftReset ...", DISPLAY_7SEGMENT_MSG_INFO_REBOOTING);
 
-		Hardware::Get()->Reboot();
+		Hardware::Get()->SoftReset();
 	}
 }
 
