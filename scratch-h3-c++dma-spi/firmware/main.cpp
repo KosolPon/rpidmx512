@@ -6,6 +6,7 @@
 #include <time.h>
 #include <stdbool.h>
 #include <assert.h>
+#include <ws28xxdisplaymatrix.h>
 
 #include "hardware.h"
 #include "networkh3emac.h"
@@ -32,7 +33,8 @@
 
 #include "h3/ws28xxdma.h"
 
-#include "ws28xxmatrix.h"
+#include "ltcdisplayws28xx.h"
+
 
 //#define LENGTH (170 * 4 * 3 * 8)	//	16320 -> 16 kB
 // (128 * 4 * 4 * 8) // 16384 -> 16 kB
@@ -96,8 +98,13 @@ void notmain(void) {
 //	WS28xxDMA ws28xx(WS2812B, LED_COUNT);
 //	ws28xx.Initialize();
 
-	WS28xxMatrix matrix(32, 8);
-	matrix.Init();
+//	WS28xxDisplayMatrix matrix(32, 8);
+//	matrix.Init();
+
+	//LtcDisplayWS28xx ltcDisplayWS28xx(LTCDISPLAYWS28XX_TYPE_MATRIX);
+	LtcDisplayWS28xx ltcDisplayWS28xx(LTCDISPLAYWS28XX_TYPE_7SEGMENT);
+	ltcDisplayWS28xx.Init(WS2812B, 0xFF);
+	ltcDisplayWS28xx.Print();
 
 	/*
 	 ********************************************
@@ -106,8 +113,11 @@ void notmain(void) {
 //	uint8_t nRed = 0, nGreen = 0, nBlue = 0;
 //	uint32_t nColour = 0;
 
-	time_t ltime;
-	struct tm *local_time;
+//	time_t ltime;
+//	struct tm *local_time;
+
+	uint32_t frames_prev = 60;
+	const uint32_t nTimeStart = hw.Millis();
 
 	for (;;) {
 		nw.Run();
@@ -120,19 +130,35 @@ void notmain(void) {
 		 ********************************************
 		 */
 
-		ltime = time(NULL);
-		local_time = localtime(&ltime);
+		ltcDisplayWS28xx.Run();
 
-		char stime[5];
-		sprintf(stime, "%.2d%.2d", local_time->tm_min, local_time->tm_sec);
+//		ltime = time(NULL);
+//		local_time = localtime(&ltime);
+
+		uint32_t nTime = hw.Millis() - nTimeStart;
+		const uint32_t hours = nTime / (uint32_t) 3600000;
+		nTime -= hours * (uint32_t) 3600000;
+		const uint32_t minutes = nTime / (uint32_t) 60000;
+		nTime -= minutes * (uint32_t) 60000;
+		const uint32_t seconds = nTime / (uint32_t) 1000;
+		const uint32_t millis = nTime - seconds * (uint32_t) 1000;
+		const uint32_t frames = (float) millis / ( 1000 / 25);
+
+		char stime[16];
+		sprintf(stime, "%.2d:%.2d:%.2d.%.2d", hours, minutes, seconds, frames);
+
+		if (frames_prev != frames) {
+			frames_prev = frames;
+			ltcDisplayWS28xx.Show(stime);
+		}
 
 		//matrix.PutString((const char *)stime);
 
-		matrix.TextLine(1, (const char *)stime, 4);
+//		matrix.TextLine(1, (const char *)stime, 4);
 
 		//matrix.PutString("8800");
 
-		matrix.Show();
+//		matrix.Show();
 
 		/*
 		 ********************************************

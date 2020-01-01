@@ -2,7 +2,7 @@
  * @file ws28xxmatrix.cpp
  *
  */
-/* Copyright (C) 2019 by Arjan van Vught mailto:info@raspberrypi-dmx.nl
+/* Copyright (C) 2019-2020 by Arjan van Vught mailto:info@raspberrypi-dmx.nl
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,9 +23,10 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <string.h>
 #include <assert.h>
 
-#include "ws28xxmatrix.h"
+#include "ws28xxdisplaymatrix.h"
 
 #if defined(USE_SPI_DMA)
  #include "h3/ws28xxdma.h"
@@ -38,10 +39,9 @@
 #include "debug.h"
 
 // FIXME Currently working for single row only
-// TODO Set RGB colour
 // TODO Create colon methods
 
-WS28xxMatrix::WS28xxMatrix(uint32_t nColumns, uint32_t nRows):
+WS28xxDisplayMatrix::WS28xxDisplayMatrix(uint32_t nColumns, uint32_t nRows):
 	m_nColumns(nColumns),
 	m_nRows(nRows),
 	m_nOffset((nRows - FONT_CP437_CHAR_H) * 2),
@@ -51,18 +51,34 @@ WS28xxMatrix::WS28xxMatrix(uint32_t nColumns, uint32_t nRows):
 	m_pWS28xx(0),
 	m_bUpdateNeeded(false),
 	m_nPosition(0),
-	m_nLine(0)
+	m_nLine(0),
+	m_ptColons(0)
 {
+	DEBUG2_ENTRY
+
 	assert(nColumns % FONT_CP437_CHAR_W == 0);
 	assert(nRows % FONT_CP437_CHAR_H == 0);
 
+	m_ptColons = new struct TWS28xxDisplayMatrixColon[m_nMaxPosition];
+
+	for (uint32_t nPos = 0; nPos < m_nMaxPosition; nPos++) {
+		memset(&m_ptColons[nPos], 0, sizeof(struct TWS28xxDisplayMatrixColon));
+	}
+
 	DEBUG_PRINTF("m_nColumns=%u, m_nRows=%u, m_nOffset=%u, m_nMaxPosition=%u, m_nMaxLine=%u", m_nColumns, m_nRows, m_nOffset, m_nMaxPosition, m_nMaxLine);
+	DEBUG2_EXIT
 }
 
-WS28xxMatrix::~WS28xxMatrix(void) {
+WS28xxDisplayMatrix::~WS28xxDisplayMatrix(void) {
+	if (m_ptColons != 0) {
+		delete[] m_ptColons;
+		m_ptColons = 0;
+	}
 }
 
-void WS28xxMatrix::Init(TWS28XXType tLedType) {
+void WS28xxDisplayMatrix::Init(TWS28XXType tLedType) {
+	DEBUG2_ENTRY
+
 	assert(m_pWS28xx == 0);
 #if defined(USE_SPI_DMA)
 	m_pWS28xx = new WS28xxDMA(tLedType, m_nMaxLeds);
@@ -72,9 +88,11 @@ void WS28xxMatrix::Init(TWS28XXType tLedType) {
 	assert(m_pWS28xx != 0);
 
 	m_pWS28xx->Initialize();
+
+	DEBUG2_EXIT
 }
 
-void WS28xxMatrix::PutChar(uint8_t nChar) {
+void WS28xxDisplayMatrix::PutChar(uint8_t nChar, uint8_t nRed, uint8_t nGreen, uint8_t nBlue) {
 	if (nChar >= (sizeof(cp437_font)/sizeof(cp437_font[0]))) {
 		nChar = ' ';
 	}
@@ -85,18 +103,23 @@ void WS28xxMatrix::PutChar(uint8_t nChar) {
 
 	uint32_t nOffset = (FONT_CP437_CHAR_W * FONT_CP437_CHAR_H) * m_nPosition;
 
-	const uint8_t nRed = 0x10;
-	const uint8_t nGreen = 0x10;
-	const uint8_t nBlue = 0x10;
-
 	for (uint32_t nWidth = 0; nWidth < FONT_CP437_CHAR_W; nWidth++) {
-		for (uint32_t nHeight = 0; nHeight < FONT_CP437_CHAR_H; nHeight++) {
-			uint8_t nByte = cp437_font[nChar][nWidth];
+		uint8_t nByte = cp437_font[nChar][nWidth];
 
-			if ((nWidth & 0x1) != 0) {
-				nByte = ReverseBits(nByte);
+		if (nWidth == (FONT_CP437_CHAR_W - 1)) {
+			if (m_ptColons[m_nPosition].nBits != 0) {
+				nByte = m_ptColons[m_nPosition].nBits;
+				nRed = m_ptColons[m_nPosition].nRed;
+				nGreen = m_ptColons[m_nPosition].nGreen;
+				nBlue = m_ptColons[m_nPosition].nBlue;
 			}
+		}
 
+		if ((nWidth & 0x1) != 0) {
+			nByte = ReverseBits(nByte);
+		}
+
+		for (uint32_t nHeight = 0; nHeight < FONT_CP437_CHAR_H; nHeight++) {
 			if (nByte & (1 << nHeight)) {
 				m_pWS28xx->SetLED(nOffset, nRed, nGreen, nBlue);
 			} else {
@@ -121,42 +144,46 @@ void WS28xxMatrix::PutChar(uint8_t nChar) {
 	m_bUpdateNeeded = true;
 }
 
-void WS28xxMatrix::PutString(const char *pString) {
+void WS28xxDisplayMatrix::PutString(const char *pString, uint8_t nRed, uint8_t nGreen, uint8_t nBlue) {
 	uint8_t nChar;
 
 	while ((nChar = *pString++) != 0) {
-		PutChar(nChar);
+		PutChar(nChar, nRed, nGreen, nBlue);
 	}
 }
 
-void WS28xxMatrix::Text(const char *pText, uint8_t nLength) {
+void WS28xxDisplayMatrix::Text(const char *pText, uint8_t nLength, uint8_t nRed, uint8_t nGreen, uint8_t nBlue) {
 	if (nLength > m_nMaxPosition) {
 		nLength = m_nMaxPosition;
 	}
 
 	for (uint32_t i = 0; i < nLength; i++) {
-		PutChar(pText[i]);
+		PutChar(pText[i], nRed, nGreen, nBlue);
 	}
 }
 
 /*
  * 1 is top line
  */
-void WS28xxMatrix::TextLine(uint8_t nLine, const char *pText, uint8_t nLength) {
+void WS28xxDisplayMatrix::TextLine(uint8_t nLine, const char *pText, uint8_t nLength, uint8_t nRed, uint8_t nGreen, uint8_t nBlue) {
 	if ((nLine == 0) || (nLine > m_nMaxLine)) {
 		return;
 	}
 
 	SetCursorPos(0, nLine - 1);
-	Text(pText, nLength);
+	Text(pText, nLength, nRed, nGreen, nBlue);
 }
 
 /*
  * 1 is top line
  */
-void WS28xxMatrix::ClearLine(uint8_t nLine) {
+void WS28xxDisplayMatrix::ClearLine(uint8_t nLine) {
 	if ((nLine == 0) || (nLine > m_nMaxLine)) {
 		return;
+	}
+
+	while (m_pWS28xx->IsUpdating()) {
+		// wait for completion
 	}
 
 	for (uint32_t i = 0; i < m_nMaxLeds; i++) {
@@ -169,7 +196,7 @@ void WS28xxMatrix::ClearLine(uint8_t nLine) {
 /**
  * 0,0 is top left
  */
-void WS28xxMatrix::SetCursorPos(uint8_t nCol, uint8_t nRow) {
+void WS28xxDisplayMatrix::SetCursorPos(uint8_t nCol, uint8_t nRow) {
 	if ((nCol >= m_nMaxPosition) || (nRow >= m_nMaxLine)) {
 		return;
 	}
@@ -178,23 +205,46 @@ void WS28xxMatrix::SetCursorPos(uint8_t nCol, uint8_t nRow) {
 	m_nLine = nRow;
 }
 
-void WS28xxMatrix::Cls(void) {
+void WS28xxDisplayMatrix::Cls(void) {
 	while (m_pWS28xx->IsUpdating()) {
 		// wait for completion
 	}
 	m_pWS28xx->Blackout();
 }
 
-void WS28xxMatrix::Show(void) {
+void WS28xxDisplayMatrix::Show(void) {
 	if (m_bUpdateNeeded) {
 		m_bUpdateNeeded = false;
 		m_pWS28xx->Update();
 	}
 }
 
-uint8_t WS28xxMatrix::ReverseBits(uint8_t nBits) {
+void WS28xxDisplayMatrix::SetColon(uint8_t nChar, uint8_t nPos, uint8_t nRed, uint8_t nGreen, uint8_t nBlue) {
+	if (nPos >= m_nMaxPosition) {
+		return;
+	}
+
+	switch (nChar) {
+		case ':':
+			m_ptColons[nPos].nBits = 0x66;
+			break;
+		case '.':
+			m_ptColons[nPos].nBits = 0x60;
+			break;
+		default:
+			m_ptColons[nPos].nBits = 0;
+			break;
+	}
+
+	m_ptColons[nPos].nRed = nRed;
+	m_ptColons[nPos].nBlue = nBlue;
+	m_ptColons[nPos].nGreen = nGreen;
+}
+
+uint8_t WS28xxDisplayMatrix::ReverseBits(uint8_t nBits) {
 	const uint32_t input = (uint32_t) nBits;
 	uint32_t output;
 	asm("rbit %0, %1" : "=r"(output) : "r"(input));
 	return (uint8_t) (output >> 24);
 }
+
