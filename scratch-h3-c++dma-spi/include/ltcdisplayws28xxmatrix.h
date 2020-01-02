@@ -36,16 +36,12 @@ public:
 	LtcDisplayWS28xxMatrix(void);
 	~LtcDisplayWS28xxMatrix(void);
 
-	void Init(uint8_t nIntensity);
+	void Init(TWS28XXType tLedType = WS2812B);
 	void Print(void);
 
 	void Show(const char *pTimecode, struct TLtcDisplayRgbColours &tColours, struct TLtcDisplayRgbColours &tColoursColons);
 	void ShowSysTime(const char *pSystemTime, struct TLtcDisplayRgbColours &tColours, struct TLtcDisplayRgbColours &tColoursColons);
 	void ShowMessage(const char *pMessage , struct TLtcDisplayRgbColours &tColours);
-
-	uint32_t GetMaxCharacters(void) {
-		return m_pWS28xxDisplayMatrix->GetMaxPosition();
-	}
 
 private:
 	WS28xxDisplayMatrix *m_pWS28xxDisplayMatrix;

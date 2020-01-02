@@ -44,19 +44,22 @@ LtcDisplayWS28xxMatrix::LtcDisplayWS28xxMatrix(void) {
 LtcDisplayWS28xxMatrix::~LtcDisplayWS28xxMatrix(void) {
 	DEBUG1_ENTRY
 
+	delete m_pWS28xxDisplayMatrix;
+	m_pWS28xxDisplayMatrix = 0;
+
 	DEBUG1_EXIT
 }
 
-void LtcDisplayWS28xxMatrix::Init(uint8_t nIntensity) {
+void LtcDisplayWS28xxMatrix::Init(TWS28XXType tLedType) {
 	DEBUG1_ENTRY
 
-//	m_pWS28xxDisplayMatrix->SetGlobalBrightness(nIntensity);
-	m_pWS28xxDisplayMatrix->Init();
+	m_pWS28xxDisplayMatrix->Init(tLedType);
 
 	DEBUG1_EXIT
 }
 
 void LtcDisplayWS28xxMatrix::Show(const char *pTimecode, struct TLtcDisplayRgbColours &tColours, struct TLtcDisplayRgbColours &tColoursColons) {
+	m_pWS28xxDisplayMatrix->SetColonsOff();
 	m_pWS28xxDisplayMatrix->SetColon(':', 1, tColoursColons.nRed, tColoursColons.nGreen, tColoursColons.nBlue);
 	m_pWS28xxDisplayMatrix->SetColon(':', 3, tColoursColons.nRed, tColoursColons.nGreen, tColoursColons.nBlue);
 	m_pWS28xxDisplayMatrix->SetColon('.', 5, tColoursColons.nRed, tColoursColons.nGreen, tColoursColons.nBlue);
@@ -64,26 +67,22 @@ void LtcDisplayWS28xxMatrix::Show(const char *pTimecode, struct TLtcDisplayRgbCo
 	const char cLine[] = { pTimecode[0], pTimecode[1], pTimecode[3], pTimecode[4], pTimecode[6], pTimecode[7], pTimecode[9], pTimecode[10] };
 
 	m_pWS28xxDisplayMatrix->TextLine(1, cLine, sizeof(cLine), tColours.nRed, tColours.nGreen, tColours.nBlue);
-
 	m_pWS28xxDisplayMatrix->Show();
 }
 
 void LtcDisplayWS28xxMatrix::ShowSysTime(const char *pSystemTime, struct TLtcDisplayRgbColours &tColours, struct TLtcDisplayRgbColours &tColoursColons) {
+	m_pWS28xxDisplayMatrix->SetColonsOff();
 	m_pWS28xxDisplayMatrix->SetColon(':', 2, tColoursColons.nRed, tColoursColons.nGreen, tColoursColons.nBlue);
 	m_pWS28xxDisplayMatrix->SetColon(':', 4, tColoursColons.nRed, tColoursColons.nGreen, tColoursColons.nBlue);
 
-	const char cLine[] = { ' ', pSystemTime[0], pSystemTime[1], pSystemTime[3], pSystemTime[4], pSystemTime[6], pSystemTime[7]};
+	const char cLine[] = { ' ', pSystemTime[0], pSystemTime[1], pSystemTime[3], pSystemTime[4], pSystemTime[6], pSystemTime[7], ' '};
 
 	m_pWS28xxDisplayMatrix->TextLine(1, cLine, sizeof(cLine), tColours.nRed, tColours.nGreen, tColours.nBlue);
-
 	m_pWS28xxDisplayMatrix->Show();
 }
 
 void LtcDisplayWS28xxMatrix::ShowMessage(const char *pMessage, struct TLtcDisplayRgbColours &tColours) {
-	for (uint32_t nPos = 0; nPos < m_pWS28xxDisplayMatrix->GetMaxPosition(); nPos++) {
-		m_pWS28xxDisplayMatrix->SetColon(' ', nPos, 0x00, 0x00, 0x00);
-	}
-
+	m_pWS28xxDisplayMatrix->SetColonsOff();
 	m_pWS28xxDisplayMatrix->TextLine(1, pMessage, LTCDISPLAY_MAX_MESSAGE_SIZE, tColours.nRed, tColours.nGreen, tColours.nBlue);
 	m_pWS28xxDisplayMatrix->Show();
 }

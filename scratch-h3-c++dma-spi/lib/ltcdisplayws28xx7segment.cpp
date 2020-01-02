@@ -3,7 +3,6 @@
  */
 /*
  * Copyright (C) 2019 by hippy mailto:dmxout@gmail.com
- * Based on: displaymax7219.h
  * Copyright (C) 2019-2020 by Arjan van Vught mailto:info@raspberrypi-dmx.nl
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -50,10 +49,10 @@ LtcDisplayWS28xx7Segment::~LtcDisplayWS28xx7Segment(void) {
 	DEBUG1_EXIT
 }
 
-void LtcDisplayWS28xx7Segment::Init(uint8_t nIntensity) {
+void LtcDisplayWS28xx7Segment::Init(TWS28XXType tLedType) {
 	DEBUG1_ENTRY
 
-	m_pWS28xxDisplay7Segment->Init();
+	m_pWS28xxDisplay7Segment->Init(tLedType);
 
 	DEBUG1_EXIT
 }
@@ -109,9 +108,7 @@ void LtcDisplayWS28xx7Segment::ShowMessage(const char *pMessage, struct TLtcDisp
 
 	m_pWS28xxDisplay7Segment->WriteAll((const uint8_t *)pMessage, nRed, nGreen, nBlue);
 
-	for (uint32_t nCount = 0; nCount < WS28XX_NUM_OF_COLONS; nCount++) {
-		m_pWS28xxDisplay7Segment->WriteColon(' ', nCount, 0x00, 0x00, 0x00);
-	}
+	m_pWS28xxDisplay7Segment->SetColonsOff();
 
 	m_pWS28xxDisplay7Segment->Show();
 }

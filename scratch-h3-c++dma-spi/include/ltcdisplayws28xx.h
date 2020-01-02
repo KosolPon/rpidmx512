@@ -3,7 +3,6 @@
  */
 /*
  * Copyright (C) 2019 by hippy mailto:dmxout@gmail.com
- * Based on: displaymax7219.h
  * Copyright (C) 2019-2020 by Arjan van Vught mailto:info@raspberrypi-dmx.nl
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -35,6 +34,11 @@
 #include "ws28xx.h"
 #include "rgbmapping.h"
 
+enum TLtcDisplayWS28xxTypes {
+	LTCDISPLAYWS28XX_TYPE_7SEGMENT,
+	LTCDISPLAYWS28XX_TYPE_MATRIX
+};
+
 enum TLtcDisplayWS28xxColonBlinkMode {
 	LTCDISPLAYWS28XX_COLON_BLINK_MODE_OFF,
 	LTCDISPLAYWS28XX_COLON_BLINK_MODE_DOWN,
@@ -42,7 +46,7 @@ enum TLtcDisplayWS28xxColonBlinkMode {
 };
 
 enum TLtcDisplayWS28xxColourIndex {
-	LTCDISPLAYWS28XX_COLOUR_INDEX_SEGMENT,
+	LTCDISPLAYWS28XX_COLOUR_INDEX_DIGIT,
 	LTCDISPLAYWS28XX_COLOUR_INDEX_COLON,
 	LTCDISPLAYWS28XX_COLOUR_INDEX_MESSAGE,
 	LTCDISPLAYWS28XX_COLOUR_INDEX_LAST
@@ -50,7 +54,7 @@ enum TLtcDisplayWS28xxColourIndex {
 
 enum TLtcDisplayWS28xxDefaults {
 	LTCDISPLAYWS28XX_DEFAULT_LED_TYPE = WS2812B,
-	LTCDISPLAYWS28XX_DEFAULT_COLOUR_SEGMENT = (uint32_t) 0x00101010,
+	LTCDISPLAYWS28XX_DEFAULT_COLOUR_DIGIT = (uint32_t) 0x00FF0000,
 	LTCDISPLAYWS28XX_DEFAULT_COLOUR_COLON = (uint32_t) 0x00FFFC00,
 	LTCDISPLAYWS28XX_DEFAULT_COLOUR_MESSAGE = (uint32_t) 0x00FFFFFF,
 	LTCDISPLAYWS28XX_DEFAULT_COLON_BLINK_MODE = LTCDISPLAYWS28XX_COLON_BLINK_MODE_UP,
@@ -58,20 +62,34 @@ enum TLtcDisplayWS28xxDefaults {
 	LTCDISPLAYWS28XX_DEFAULT_GLOBAL_BRIGHTNESS = 0xFF,
 };
 
-enum TLtcDisplayWS28xxTypes {
-	LTCDISPLAYWS28XX_TYPE_7SEGMENT,
-	LTCDISPLAYWS28XX_TYPE_MATRIX
-};
-
 class LtcDisplayWS28xx {
 public:
 	LtcDisplayWS28xx(TLtcDisplayWS28xxTypes tType = LTCDISPLAYWS28XX_TYPE_7SEGMENT);
 	~LtcDisplayWS28xx(void);
 
-	void Init(TWS28XXType tLedType, uint8_t nIntensity);
-	void Run(void);
+	void SetMapping(TRGBMapping tMapping) {
+		m_tMapping = tMapping;
+	}
 
+	void SetMaster(uint8_t nValue) {
+		m_nMaster = nValue;
+	}
+
+	void SetColonBlinkMode(TLtcDisplayWS28xxColonBlinkMode tColonBlinkMode) {
+		m_tColonBlinkMode = tColonBlinkMode;
+	}
+
+	void SetColour(uint32_t nRGB, TLtcDisplayWS28xxColourIndex tIndex) {
+		if (tIndex >= LTCDISPLAYWS28XX_COLOUR_INDEX_LAST) {
+			return;
+		}
+		m_aColour[(uint32_t) tIndex] = nRGB;
+	}
+
+	void Init(TWS28XXType tLedType, uint8_t nIntensity = 0xFF);
 	void Print(void);
+
+	void Run(void);
 
 	void Show(const char *pTimecode);
 	void ShowSysTime(const char *pSystemTime);
@@ -96,12 +114,11 @@ private:
 	int32_t m_nHandle;
 	uint8_t m_Buffer[64];
   	TRGBMapping m_tMapping;
+  	TWS28XXType m_tLedType;
 	uint32_t m_aColour[LTCDISPLAYWS28XX_COLOUR_INDEX_LAST];
 	uint32_t m_nMaster;
 	bool m_bShowMsg;
 	char m_aMessage[LTCDISPLAY_MAX_MESSAGE_SIZE];
-	uint32_t m_nMaxCharacters;
-	uint32_t m_nMillis;
 	uint32_t m_nMsgTimer;
 	uint32_t m_nColonBlinkMillis;
 	uint32_t m_nSecondsPrevious;

@@ -22,13 +22,15 @@
  * THE SOFTWARE.
  */
 
-#ifndef WS28XXSET_H_
-#define WS28XXSET_H_
+#ifndef LTCDISPLAYWS28XXSET_H_
+#define LTCDISPLAYWS28XXSET_H_
 
 #include <stdint.h>
 
+#include "ws28xx.h"
+
 enum TLtcDisplayMessage {
-	LTCDISPLAY_MAX_MESSAGE_SIZE =	8
+	LTCDISPLAY_MAX_MESSAGE_SIZE = 8
 };
 
 struct TLtcDisplayRgbColours {
@@ -41,14 +43,12 @@ class LtcDisplayWS28xxSet {
 public:
 	virtual ~LtcDisplayWS28xxSet(void) {}
 
-	virtual void Init(uint8_t nIntensity)=0;
+	virtual void Init(TWS28XXType tLedType)=0;
 	virtual void Print(void)=0;
 
 	virtual void Show(const char *pTimecode, struct TLtcDisplayRgbColours &tColours, struct TLtcDisplayRgbColours &tColoursColons)=0;
 	virtual void ShowSysTime(const char *pSystemTime, struct TLtcDisplayRgbColours &tColours, struct TLtcDisplayRgbColours &tColoursColons)=0;
 	virtual void ShowMessage(const char *pMessage, struct TLtcDisplayRgbColours &tColours)=0;
-
-	virtual uint32_t GetMaxCharacters(void)=0;
 };
 
-#endif /* WS28XXSET_H_ */
+#endif /* LTCDISPLAYWS28XXSET_H_ */

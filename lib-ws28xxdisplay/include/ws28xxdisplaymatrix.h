@@ -44,10 +44,6 @@ public:
 	WS28xxDisplayMatrix(uint32_t nColumns, uint32_t nRows);
 	~WS28xxDisplayMatrix(void);
 
-//	void SetGlobalBrightness(uint8_t nGlobalBrightness) {
-//		m_pWS28xx->SetGlobalBrightness(nGlobalBrightness);
-//	}
-
 	void Init(TWS28XXType tLedType = WS2812B);
 
 	void PutChar(uint8_t nChar, uint8_t nRed = 0x10, uint8_t nGreen = 0x10, uint8_t nBlue = 0x10);
@@ -57,6 +53,7 @@ public:
 	void TextLine(uint8_t nLine, const char *pText, uint8_t nLength, uint8_t nRed = 0x10, uint8_t nGreen = 0x10, uint8_t nBlue = 0x10);
 
 	void SetColon(uint8_t nChar, uint8_t nPos, uint8_t nRed = 0x10, uint8_t nGreen = 0x10, uint8_t nBlue = 0x10);
+	void SetColonsOff(void);
 
 	void ClearLine(uint8_t nLine);
 
@@ -92,7 +89,6 @@ private:
 	uint32_t m_nPosition;
 	uint32_t m_nLine;
 	struct TWS28xxDisplayMatrixColon *m_ptColons;
-	//struct TWS28xxDisplayMatrixColon m_tColons[8];
 };
 
 #endif /* WS28XXDISPLAYMATRIX_H_ */

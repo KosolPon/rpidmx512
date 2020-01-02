@@ -3,7 +3,6 @@
  */
 /*
  * Copyright (C) 2019 by hippy mailto:dmxout@gmail.com
- * Based on: displaymax7219.h
  * Copyright (C) 2019-2020 by Arjan van Vught mailto:info@raspberrypi-dmx.nl
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -39,16 +38,12 @@ public:
 	LtcDisplayWS28xx7Segment(void);
 	~LtcDisplayWS28xx7Segment(void);
 
-	void Init(uint8_t nIntensity);
+	void Init(TWS28XXType tLedType = WS2812B);
 	void Print(void);
 
 	void Show(const char *pTimecode, struct TLtcDisplayRgbColours &tColours, struct TLtcDisplayRgbColours &tColoursColons);
 	void ShowSysTime(const char *pSystemTime, struct TLtcDisplayRgbColours &tColours, struct TLtcDisplayRgbColours &tColoursColons);
 	void ShowMessage(const char *pMessage , struct TLtcDisplayRgbColours &tColours);
-
-	uint32_t GetMaxCharacters(void) {
-		return 8;	// TODO
-	}
 
 private:
 	WS28xxDisplay7Segment *m_pWS28xxDisplay7Segment;

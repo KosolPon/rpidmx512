@@ -3,7 +3,6 @@
  */
 /*
  * Copyright (C) 2019 by hippy mailto:dmxout@gmail.com
- * Based on: displaymax7219.h
  * Copyright (C) 2019-2020 by Arjan van Vught mailto:info@raspberrypi-dmx.nl
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -77,7 +76,7 @@ void LtcDisplayWS28xx::SetRGB(uint8_t nRed, uint8_t nGreen, uint8_t nBlue, TLtcD
 	}
 
 	switch (tIndex) {
-	case LTCDISPLAYWS28XX_COLOUR_INDEX_SEGMENT:
+	case LTCDISPLAYWS28XX_COLOUR_INDEX_DIGIT:
 		m_tColours.nRed = nRedCurrent;
 		m_tColours.nGreen = nGreenCurrent;
 		m_tColours.nBlue = nBlueCurrent;

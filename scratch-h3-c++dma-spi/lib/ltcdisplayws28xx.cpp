@@ -3,7 +3,6 @@
  */
 /*
  * Copyright (C) 2019 by hippy mailto:dmxout@gmail.com
- * Based on: displaymax7219.h
  * Copyright (C) 2019-2020 by Arjan van Vught mailto:info@raspberrypi-dmx.nl
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -27,12 +26,15 @@
 
 #include <stdint.h>
 #include <string.h>
+#include <stdio.h>
 #include <assert.h>
 
 #include "ltcdisplayws28xx.h"
 
 #include "ltcdisplayws28xx7segment.h"
 #include "ltcdisplayws28xxmatrix.h"
+
+#include "rgbmapping.h"
 
 #include "hardware.h"
 #include "network.h"
@@ -53,7 +55,6 @@ static const char sMaster[] ALIGNED = "master";
 
 static const char sDisplayMSG[] ALIGNED = "showmsg";
 #define DMSG_LENGTH 		(sizeof(sDisplayMSG)/sizeof(sDisplayMSG[0]) - 1)
-#define DMSG_SIZE			11
 
 enum TUdpPort {
 	UDP_PORT = 0x2812
@@ -67,10 +68,9 @@ LtcDisplayWS28xx::LtcDisplayWS28xx(TLtcDisplayWS28xxTypes tType) :
 	m_tDisplayWS28xxTypes(tType),
 	m_nIntensity(LTCDISPLAYWS28XX_DEFAULT_GLOBAL_BRIGHTNESS),
 	m_nHandle(-1),
+	m_tMapping(RGB_MAPPING_RGB),
 	m_nMaster(LTCDISPLAYWS28XX_DEFAULT_MASTER),
 	m_bShowMsg(false),
-	m_nMaxCharacters(0),
-	m_nMillis(0),
 	m_nMsgTimer(0),
 	m_nColonBlinkMillis(0),
 	m_nSecondsPrevious(60),
@@ -81,7 +81,7 @@ LtcDisplayWS28xx::LtcDisplayWS28xx(TLtcDisplayWS28xxTypes tType) :
 
 	s_pThis = this;
 
-	m_aColour[LTCDISPLAYWS28XX_COLOUR_INDEX_SEGMENT] = LTCDISPLAYWS28XX_DEFAULT_COLOUR_SEGMENT;
+	m_aColour[LTCDISPLAYWS28XX_COLOUR_INDEX_DIGIT] = LTCDISPLAYWS28XX_DEFAULT_COLOUR_DIGIT;
 	m_aColour[LTCDISPLAYWS28XX_COLOUR_INDEX_COLON] = LTCDISPLAYWS28XX_DEFAULT_COLOUR_COLON;
 	m_aColour[LTCDISPLAYWS28XX_COLOUR_INDEX_MESSAGE] = LTCDISPLAYWS28XX_DEFAULT_COLOUR_MESSAGE;
 
@@ -102,6 +102,8 @@ LtcDisplayWS28xx::~LtcDisplayWS28xx(void) {
 void LtcDisplayWS28xx::Init(TWS28XXType tLedType, uint8_t nIntensity) {
 	DEBUG_ENTRY
 
+	m_tLedType = tLedType;
+
 	if (m_tDisplayWS28xxTypes == LTCDISPLAYWS28XX_TYPE_7SEGMENT) {
 		m_pLtcDisplayWS28xxSet = new LtcDisplayWS28xx7Segment;
 	} else {
@@ -109,12 +111,9 @@ void LtcDisplayWS28xx::Init(TWS28XXType tLedType, uint8_t nIntensity) {
 	}
 
 	assert(m_pLtcDisplayWS28xxSet != 0);
-	m_pLtcDisplayWS28xxSet->Init(nIntensity);
+	m_pLtcDisplayWS28xxSet->Init(tLedType);
 
-	m_nMaxCharacters = m_pLtcDisplayWS28xxSet->GetMaxCharacters();
-	assert(m_nMaxCharacters <= LTCDISPLAY_MAX_MESSAGE_SIZE);
-
-	SetRGB(m_aColour[LTCDISPLAYWS28XX_COLOUR_INDEX_SEGMENT], LTCDISPLAYWS28XX_COLOUR_INDEX_SEGMENT);
+	SetRGB(m_aColour[LTCDISPLAYWS28XX_COLOUR_INDEX_DIGIT], LTCDISPLAYWS28XX_COLOUR_INDEX_DIGIT);
 	SetRGB(m_aColour[LTCDISPLAYWS28XX_COLOUR_INDEX_COLON], LTCDISPLAYWS28XX_COLOUR_INDEX_COLON);
 	SetRGB(m_aColour[LTCDISPLAYWS28XX_COLOUR_INDEX_MESSAGE], LTCDISPLAYWS28XX_COLOUR_INDEX_MESSAGE);
 
@@ -133,20 +132,22 @@ void LtcDisplayWS28xx::Show(const char *pTimecode) {
 	struct TLtcDisplayRgbColours tColoursColons;
 
 	if (m_tColonBlinkMode != LTCDISPLAYWS28XX_COLON_BLINK_MODE_OFF) {
+		const uint32_t nMillis = Hardware::Get()->Millis();
+
 		if (m_nSecondsPrevious != pTimecode[7]) { // seconds have changed
-			m_nColonBlinkMillis = m_nMillis;
+			m_nColonBlinkMillis = nMillis;
 			m_nSecondsPrevious = pTimecode[7];
 
 			tColoursColons.nRed = 0;
 			tColoursColons.nGreen = 0;
 			tColoursColons.nBlue = 0;
-		} else if (m_nMillis - m_nColonBlinkMillis < 1000) {
+		} else if (nMillis - m_nColonBlinkMillis < 1000) {
 			uint32_t nMaster;
 
 			if (m_tColonBlinkMode == LTCDISPLAYWS28XX_COLON_BLINK_MODE_DOWN) {
-				nMaster = 255 - ((m_nMillis - m_nColonBlinkMillis) * 255 / 1000);
+				nMaster = 255 - ((nMillis - m_nColonBlinkMillis) * 255 / 1000);
 			} else {
-				nMaster = ((m_nMillis - m_nColonBlinkMillis) * 255 / 1000);
+				nMaster = ((nMillis - m_nColonBlinkMillis) * 255 / 1000);
 			}
 
 			nMaster = (m_nMaster * nMaster) / 255 ;
@@ -208,10 +209,18 @@ void LtcDisplayWS28xx::ShowSysTime(const char *pSystemTime) {
 
 void LtcDisplayWS28xx::SetMessage(const char *pMessage, uint32_t nSize) {
 	assert(pMessage != 0);
-	assert((nSize != 0) && (nSize <= LTCDISPLAY_MAX_MESSAGE_SIZE));
 
-	memset(&m_aMessage, ' ', sizeof(m_aMessage));
-	memcpy(&m_aMessage, pMessage, nSize);
+	uint32_t i;
+	const char *pSrc = pMessage;
+	char *pDst = (char *)m_aMessage;
+
+	for (i = 0; i < nSize; i++) {
+		*pDst++ = *pSrc++;
+	}
+
+	for (; i < sizeof(m_aMessage); i++) {
+		*pDst++ = ' ';
+	}
 
 	m_nMsgTimer = Hardware::Get()->Millis();
 	m_bShowMsg = true;
@@ -220,25 +229,24 @@ void LtcDisplayWS28xx::SetMessage(const char *pMessage, uint32_t nSize) {
 void LtcDisplayWS28xx::ShowMessage(void) {
 	struct TLtcDisplayRgbColours tColours;
 
-	tColours.nRed = ((m_nMillis - m_nMsgTimer) * m_tColoursMessage.nRed) / MESSAGE_TIME_MS;
-	tColours.nGreen = ((m_nMillis - m_nMsgTimer) * m_tColoursMessage.nGreen) / MESSAGE_TIME_MS;
-	tColours.nBlue = ((m_nMillis - m_nMsgTimer) * m_tColoursMessage.nBlue) / MESSAGE_TIME_MS;
+	const uint32_t nMillis = Hardware::Get()->Millis();
+
+	tColours.nRed = ((nMillis - m_nMsgTimer) * m_tColoursMessage.nRed) / MESSAGE_TIME_MS;
+	tColours.nGreen = ((nMillis - m_nMsgTimer) * m_tColoursMessage.nGreen) / MESSAGE_TIME_MS;
+	tColours.nBlue = ((nMillis - m_nMsgTimer) * m_tColoursMessage.nBlue) / MESSAGE_TIME_MS;
 
 	m_pLtcDisplayWS28xxSet->ShowMessage(m_aMessage, tColours);
 }
 
 void LtcDisplayWS28xx::Run(void) {
-	uint32_t nIPAddressFrom;
-	uint16_t nForeignPort;
-
-	m_nMillis = Hardware::Get()->Millis();
-
-	if (m_bShowMsg) {
-		if (m_nMillis - m_nMsgTimer >= MESSAGE_TIME_MS) {
+	if (__builtin_expect((m_bShowMsg), 0)) {
+		if (Hardware::Get()->Millis() - m_nMsgTimer >= MESSAGE_TIME_MS) {
 			m_bShowMsg = false;
 		}
 	}
 
+	uint32_t nIPAddressFrom;
+	uint16_t nForeignPort;
 	uint16_t m_nBytesReceived = Network::Get()->RecvFrom(m_nHandle, (uint8_t *) &m_Buffer, (uint16_t) sizeof(m_Buffer), &nIPAddressFrom, &nForeignPort);
 
 	if (__builtin_expect((m_nBytesReceived < (int) 8), 1)) {
@@ -256,9 +264,9 @@ void LtcDisplayWS28xx::Run(void) {
 
 	if (memcmp(&m_Buffer[5], sDisplayMSG, DMSG_LENGTH) == 0) {
 		const uint32_t nMsgLength = m_nBytesReceived - (5 + DMSG_LENGTH + 1);
-		DEBUG_PRINTF("RX: %d  MsgLen: %d  Msg: %.*s", m_nBytesReceived, nMsgLength, nMsgLength, &m_Buffer[(5 + DMSG_LENGTH + 1)]);
+		DEBUG_PRINTF("m_nBytesReceived=%d, nMsgLength=%d [%.*s]", m_nBytesReceived, nMsgLength, nMsgLength, &m_Buffer[(5 + DMSG_LENGTH + 1)]);
 
-		if (((nMsgLength > 0) && (nMsgLength <= DMSG_SIZE)) && (m_Buffer[5 + DMSG_LENGTH] == '#')) {
+		if (((nMsgLength > 0) && (nMsgLength <= LTCDISPLAY_MAX_MESSAGE_SIZE)) && (m_Buffer[5 + DMSG_LENGTH] == '#')) {
 			SetMessage((const char *) &m_Buffer[(5 + DMSG_LENGTH + 1)], nMsgLength);
 		} else {
 			DEBUG_PUTS("Invalid !showmsg command");
@@ -282,11 +290,10 @@ void LtcDisplayWS28xx::Run(void) {
 
 void LtcDisplayWS28xx::Print(void) {
 	printf("Display WS28xx\n");
-//	printf(" Type    : %s [%d]\n", WS28xx::GetLedTypeString(), );
+	printf(" Type    : %s [%d]\n", WS28xx::GetLedTypeString(m_tLedType), m_tLedType);
 	printf(" Mapping : %s [%d]\n", RGBMapping::ToString(m_tMapping), m_tMapping);
 	printf(" Master  : %d\n", m_nMaster);
-	printf(" RGB     : Segment 0x%.6X, Colon 0x%.6X, Message 0x%.6X\n", m_aColour[LTCDISPLAYWS28XX_COLOUR_INDEX_SEGMENT], m_aColour[LTCDISPLAYWS28XX_COLOUR_INDEX_COLON], m_aColour[LTCDISPLAYWS28XX_COLOUR_INDEX_MESSAGE]);
-
+	printf(" RGB     : Character 0x%.6X, Colon 0x%.6X, Message 0x%.6X\n", m_aColour[LTCDISPLAYWS28XX_COLOUR_INDEX_DIGIT], m_aColour[LTCDISPLAYWS28XX_COLOUR_INDEX_COLON], m_aColour[LTCDISPLAYWS28XX_COLOUR_INDEX_MESSAGE]);
 
 	m_pLtcDisplayWS28xxSet->Print();
 }

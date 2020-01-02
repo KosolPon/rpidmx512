@@ -3,7 +3,6 @@
  */
 /*
  * Copyright (C) 2019 by hippy mailto:dmxout@gmail.com
- * Based on: displaymax7219.h
  * Copyright (C) 2019-2020 by Arjan van Vught mailto:info@raspberrypi-dmx.nl
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -69,6 +68,11 @@ WS28xxDisplay7Segment::WS28xxDisplay7Segment(void):
 WS28xxDisplay7Segment::~WS28xxDisplay7Segment(void) {
 	DEBUG2_ENTRY
 
+	if (m_pWS28xx != 0) {
+		delete m_pWS28xx;
+		m_pWS28xx = 0;
+	}
+
 	DEBUG2_EXIT
 }
 
@@ -124,8 +128,14 @@ void WS28xxDisplay7Segment::WriteColon(uint8_t nChar, uint8_t nPos, uint8_t nRed
 		if (OnOff) {
 			m_pWS28xx->SetLED(nIndex, nRed, nGreen, nBlue);
 		} else {
-			m_pWS28xx->SetLED(nIndex, 0, 0, 0);
+			m_pWS28xx->SetLED(nIndex, 0x00, 0x00, 0x00);
 		}
+	}
+}
+
+void WS28xxDisplay7Segment::SetColonsOff(void) {
+	for (uint32_t nCount = 0; nCount < WS28XX_NUM_OF_COLONS; nCount++) {
+		WriteColon(' ', nCount, 0x00, 0x00, 0x00);
 	}
 }
 

@@ -101,8 +101,8 @@ void notmain(void) {
 //	WS28xxDisplayMatrix matrix(32, 8);
 //	matrix.Init();
 
-	//LtcDisplayWS28xx ltcDisplayWS28xx(LTCDISPLAYWS28XX_TYPE_MATRIX);
-	LtcDisplayWS28xx ltcDisplayWS28xx(LTCDISPLAYWS28XX_TYPE_7SEGMENT);
+	LtcDisplayWS28xx ltcDisplayWS28xx(LTCDISPLAYWS28XX_TYPE_MATRIX);
+	//LtcDisplayWS28xx ltcDisplayWS28xx(LTCDISPLAYWS28XX_TYPE_7SEGMENT);
 	ltcDisplayWS28xx.Init(WS2812B, 0xFF);
 	ltcDisplayWS28xx.Print();
 

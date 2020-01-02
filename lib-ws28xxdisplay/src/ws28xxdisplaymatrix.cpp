@@ -34,12 +34,11 @@
  #include "ws28xx.h"
 #endif
 
-#include "../lib-bob/src/font_cp437.h"
+#include "../lib-bob/include/font_cp437.h"
 
 #include "debug.h"
 
 // FIXME Currently working for single row only
-// TODO Create colon methods
 
 WS28xxDisplayMatrix::WS28xxDisplayMatrix(uint32_t nColumns, uint32_t nRows):
 	m_nColumns(nColumns),
@@ -60,20 +59,28 @@ WS28xxDisplayMatrix::WS28xxDisplayMatrix(uint32_t nColumns, uint32_t nRows):
 	assert(nRows % FONT_CP437_CHAR_H == 0);
 
 	m_ptColons = new struct TWS28xxDisplayMatrixColon[m_nMaxPosition];
+	assert(m_ptColons != 0);
 
-	for (uint32_t nPos = 0; nPos < m_nMaxPosition; nPos++) {
-		memset(&m_ptColons[nPos], 0, sizeof(struct TWS28xxDisplayMatrixColon));
-	}
+	SetColonsOff();
 
 	DEBUG_PRINTF("m_nColumns=%u, m_nRows=%u, m_nOffset=%u, m_nMaxPosition=%u, m_nMaxLine=%u", m_nColumns, m_nRows, m_nOffset, m_nMaxPosition, m_nMaxLine);
 	DEBUG2_EXIT
 }
 
 WS28xxDisplayMatrix::~WS28xxDisplayMatrix(void) {
-	if (m_ptColons != 0) {
-		delete[] m_ptColons;
-		m_ptColons = 0;
+	DEBUG2_ENTRY
+
+	if (m_pWS28xx != 0) {
+		Cls();
+
+		delete m_pWS28xx;
+		m_pWS28xx = 0;
 	}
+
+	delete[] m_ptColons;
+	m_ptColons = 0;
+
+	DEBUG2_EXIT
 }
 
 void WS28xxDisplayMatrix::Init(TWS28XXType tLedType) {
@@ -93,7 +100,7 @@ void WS28xxDisplayMatrix::Init(TWS28XXType tLedType) {
 }
 
 void WS28xxDisplayMatrix::PutChar(uint8_t nChar, uint8_t nRed, uint8_t nGreen, uint8_t nBlue) {
-	if (nChar >= (sizeof(cp437_font)/sizeof(cp437_font[0]))) {
+	if (nChar >= cp437_font_size()) {
 		nChar = ' ';
 	}
 
@@ -123,7 +130,7 @@ void WS28xxDisplayMatrix::PutChar(uint8_t nChar, uint8_t nRed, uint8_t nGreen, u
 			if (nByte & (1 << nHeight)) {
 				m_pWS28xx->SetLED(nOffset, nRed, nGreen, nBlue);
 			} else {
-				m_pWS28xx->SetLED(nOffset, 0, 0, 0);
+				m_pWS28xx->SetLED(nOffset, 0x00, 0x00, 0x00);
 			}
 
 			nOffset++;
@@ -239,6 +246,15 @@ void WS28xxDisplayMatrix::SetColon(uint8_t nChar, uint8_t nPos, uint8_t nRed, ui
 	m_ptColons[nPos].nRed = nRed;
 	m_ptColons[nPos].nBlue = nBlue;
 	m_ptColons[nPos].nGreen = nGreen;
+}
+
+void WS28xxDisplayMatrix::SetColonsOff(void) {
+	for (uint32_t nPos = 0; nPos < m_nMaxPosition; nPos++) {
+		m_ptColons[nPos].nBits = 0;
+		m_ptColons[nPos].nRed = 0;
+		m_ptColons[nPos].nGreen = 0;
+		m_ptColons[nPos].nBlue = 0;
+	}
 }
 
 uint8_t WS28xxDisplayMatrix::ReverseBits(uint8_t nBits) {
