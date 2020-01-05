@@ -34,6 +34,8 @@
 #include "ltcdisplayws28xx7segment.h"
 #include "ltcdisplayws28xxmatrix.h"
 
+#include "ltc.h"
+
 #include "rgbmapping.h"
 
 #include "hardware.h"
@@ -134,9 +136,9 @@ void LtcDisplayWS28xx::Show(const char *pTimecode) {
 	if (m_tColonBlinkMode != LTCDISPLAYWS28XX_COLON_BLINK_MODE_OFF) {
 		const uint32_t nMillis = Hardware::Get()->Millis();
 
-		if (m_nSecondsPrevious != pTimecode[7]) { // seconds have changed
+		if (m_nSecondsPrevious != pTimecode[LTC_TC_INDEX_SECONDS_UNITS]) { // seconds have changed
+			m_nSecondsPrevious = pTimecode[LTC_TC_INDEX_SECONDS_UNITS];
 			m_nColonBlinkMillis = nMillis;
-			m_nSecondsPrevious = pTimecode[7];
 
 			tColoursColons.nRed = 0;
 			tColoursColons.nGreen = 0;
@@ -150,16 +152,34 @@ void LtcDisplayWS28xx::Show(const char *pTimecode) {
 				nMaster = ((nMillis - m_nColonBlinkMillis) * 255 / 1000);
 			}
 
-			nMaster = (m_nMaster * nMaster) / 255 ;
+			if (!(m_nMaster == 0 || m_nMaster == 255)) {
+				nMaster = (m_nMaster * nMaster) / 255 ;
+			}
 
 			tColoursColons.nRed = (nMaster * m_tColoursColons.nRed) / 255;
 			tColoursColons.nGreen = (nMaster *  m_tColoursColons.nGreen) / 255;
 			tColoursColons.nBlue = (nMaster * m_tColoursColons.nBlue) / 255;
+		} else {
+			if (!(m_nMaster == 0 || m_nMaster == 255)) {
+				tColoursColons.nRed = (m_nMaster * m_tColoursColons.nRed) / 255 ;
+				tColoursColons.nGreen = (m_nMaster * m_tColoursColons.nGreen) / 255 ;
+				tColoursColons.nBlue = (m_nMaster * m_tColoursColons.nBlue) / 255 ;
+			} else {
+				tColoursColons.nRed = m_tColoursColons.nRed;
+				tColoursColons.nGreen = m_tColoursColons.nGreen;
+				tColoursColons.nBlue = m_tColoursColons.nBlue;
+			}
 		}
 	} else {
-		tColoursColons.nRed = (m_nMaster * m_tColoursColons.nRed) / 255 ;
-		tColoursColons.nGreen = (m_nMaster * m_tColoursColons.nGreen) / 255 ;
-		tColoursColons.nBlue = (m_nMaster * m_tColoursColons.nBlue) / 255 ;
+		if (!(m_nMaster == 0 || m_nMaster == 255)) {
+			tColoursColons.nRed = (m_nMaster * m_tColoursColons.nRed) / 255 ;
+			tColoursColons.nGreen = (m_nMaster * m_tColoursColons.nGreen) / 255 ;
+			tColoursColons.nBlue = (m_nMaster * m_tColoursColons.nBlue) / 255 ;
+		} else {
+			tColoursColons.nRed = m_tColoursColons.nRed;
+			tColoursColons.nGreen = m_tColoursColons.nGreen;
+			tColoursColons.nBlue = m_tColoursColons.nBlue;
+		}
 	}
 
 	struct TLtcDisplayRgbColours tColours;

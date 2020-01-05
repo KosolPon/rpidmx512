@@ -2,7 +2,7 @@
  * @file ltcoutputs.cpp
  *
  */
-/* Copyright (C) 2019 by Arjan van Vught mailto:info@raspberrypi-dmx.nl
+/* Copyright (C) 2019-2020 by Arjan van Vught mailto:info@raspberrypi-dmx.nl
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -47,8 +47,8 @@
 #include "ntpserver.h"
 #include "ltc7segment.h"
 #include "display.h"
-#include "displaymax7219.h"
-#include "displayws28xx.h"
+#include "ltcdisplaymax7219.h"
+#include "ltcdisplayws28xx.h"
 
 // IRQ Timer1
 static volatile bool IsMidiQuarterFrameMessage = false;
@@ -127,11 +127,11 @@ void LtcOutputs::Update(const struct TLtcTimeCode *ptLtcTimeCode) {
 	}
 
 	if (!m_tLtcDisabledOutputs.bMax7219) {
-		DisplayMax7219::Get()->Show((const char *) m_aTimeCode);
+		LtcDisplayMax7219::Get()->Show((const char *) m_aTimeCode);
 	}
 
 	if(!m_tLtcDisabledOutputs.bWS28xx) {
-		DisplayWS28xx::Get()->Show((const char *) m_aTimeCode);
+		LtcDisplayWS28xx::Get()->Show((const char *) m_aTimeCode);
 	}
 }
 
@@ -164,11 +164,11 @@ void LtcOutputs::ShowSysTime(void) {
 		Ltc7segment::Get()->Show(TC_TYPE_UNKNOWN);
 
 		if (!m_tLtcDisabledOutputs.bMax7219) {
-			DisplayMax7219::Get()->ShowSysTime((const char *) m_aSystemTime);
+			LtcDisplayMax7219::Get()->ShowSysTime((const char *) m_aSystemTime);
 		}
 
 		if(!m_tLtcDisabledOutputs.bWS28xx) {
-			DisplayWS28xx::Get()->ShowSysTime((const char *) m_aSystemTime);
+			LtcDisplayWS28xx::Get()->ShowSysTime((const char *) m_aSystemTime);
 		}
 
 		ResetTimeCodeTypePrevious();

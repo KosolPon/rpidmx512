@@ -1,7 +1,8 @@
 /**
- * @file displaymax7219.h
+ * @file ltcdisplaymax7219matrix.h
+ *
  */
-/* Copyright (C) 2019 by Arjan van Vught mailto:info@raspberrypi-dmx.nl
+/* Copyright (C) 2019-2020 by Arjan van Vught mailto:info@raspberrypi-dmx.nl
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -22,43 +23,36 @@
  * THE SOFTWARE.
  */
 
-#ifndef DISPLAYMAX7219_H_
-#define DISPLAYMAX7219_H_
+#ifndef LTCDISPLAYMAX7219MATRIX_H_
+#define LTCDISPLAYMAX7219MATRIX_H_
 
 #include <stdint.h>
-#include <stdbool.h>
 
-#include "max7219set.h"
+#include "ltcdisplaymax7219set.h"
 
-enum TMax7219Types {
-	MAX7219_TYPE_MATRIX,
-	MAX7219_TYPE_7SEGMENT
-};
+#include "device_info.h"
 
-class DisplayMax7219 {
+#define SEGMENTS	8
+
+class LtcDisplayMax7219Matrix: public LtcDisplayMax7219Set {
 public:
-	DisplayMax7219(TMax7219Types tType = MAX7219_TYPE_MATRIX);
-	~DisplayMax7219(void);
+	LtcDisplayMax7219Matrix(void);
+	~LtcDisplayMax7219Matrix(void);
 
 	void Init(uint8_t nIntensity);
-
-	void Print(void);
 
 	void Show(const char *pTimecode);
 	void ShowSysTime(const char *pSystemTime);
 
-	void WriteChar(uint8_t nChar, uint8_t nPos = 0);
-
-	static DisplayMax7219 *Get(void) {
+	static LtcDisplayMax7219Matrix* Get(void) {
 		return s_pThis;
 	}
 
 private:
-	TMax7219Types m_tMax7219Types;
-	uint8_t m_nIntensity;
-	Max7219Set *m_pMax7219Set;
+	device_info_t m_DeviceInfo;
+	uint8_t m_aBuffer[SEGMENTS];
 
-	static DisplayMax7219 *s_pThis;
+	static LtcDisplayMax7219Matrix *s_pThis;
 };
 
-#endif /* DISPLAYMAX7219_H_ */
+#endif /* LTCDISPLAYMAX7219MATRIX_H_ */

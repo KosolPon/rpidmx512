@@ -177,7 +177,7 @@ void MidiReader::Run(void) {
 		}
 	}
 
-	if (Midi::Get()->GetUpdatesPerSeconde() >= 24)  {
+	if (Midi::Get()->GetUpdatesPerSeconde() != 0)  {
 		led_set_ticks_per_second(LED_TICKS_DATA);
 	} else {
 		led_set_ticks_per_second(LED_TICKS_NO_DATA);

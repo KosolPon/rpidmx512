@@ -34,7 +34,6 @@
 #include "h3/tcnetreader.h"
 #include "tcnet.h"
 #include "timecodeconst.h"
-#include "tcnetdisplay.h"
 
 #include "c/led.h"
 
@@ -47,7 +46,7 @@
 #include "artnetnode.h"
 #include "rtpmidi.h"
 #include "h3/ltcsender.h"
-#include "displaymax7219.h"
+#include "tcnetdisplay.h"
 //
 #include "h3/ltcoutputs.h"
 
@@ -107,7 +106,7 @@ void TCNetReader::Stop(void) {
 	irq_timer_set(IRQ_TIMER_0, 0);
 }
 
-void TCNetReader::Handler(const struct TTCNetTimeCode* pTimeCode) {
+void TCNetReader::Handler(const struct TTCNetTimeCode *pTimeCode) {
 	nUpdates++;
 
 	assert(((uint32_t )pTimeCode & 0x3) == 0); // Check if we can do 4-byte compare
@@ -208,11 +207,12 @@ void TCNetReader::Run(void) {
 	LtcOutputs::Get()->UpdateMidiQuarterFrameMessage((const struct TLtcTimeCode *)&m_tMidiTimeCode);
 
 	dmb();
-	if (nUpdatesPerSecond >= 24) {
+	if (nUpdatesPerSecond != 0) {
 		led_set_ticks_per_second(LED_TICKS_DATA);
 	} else {
 		LtcOutputs::Get()->ShowSysTime();
 		led_set_ticks_per_second(LED_TICKS_NO_DATA);
+		m_nTimeCodePrevious = ~0;
 	}
 
 	HandleUdpRequest();

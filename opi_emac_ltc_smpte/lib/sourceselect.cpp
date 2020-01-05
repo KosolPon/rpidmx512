@@ -2,7 +2,7 @@
  * @file sourceselect.cpp
  *
  */
-/* Copyright (C) 2019 by Arjan van Vught mailto:info@raspberrypi-dmx.nl
+/* Copyright (C) 2019-2020 by Arjan van Vught mailto:info@raspberrypi-dmx.nl
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -38,7 +38,7 @@
 
 #include "display.h"
 #include "display7segment.h"
-#include "displaymax7219.h"
+#include "ltcdisplaymax7219.h"
 
 #include "rotaryencoder.h"
 
@@ -148,7 +148,7 @@ void SourceSelect::HandleRotary(uint8_t nInputAB, TLtcReaderSource &tLtcReaderSo
 
 void SourceSelect::UpdateDisaplays(TLtcReaderSource tLtcReaderSource) {
 	Display::Get()->TextStatus(SourceSelectConst::SOURCE[tLtcReaderSource], s_7Segment[tLtcReaderSource]);
-	DisplayMax7219::Get()->WriteChar((uint8_t) tLtcReaderSource);
+	//LtcDisplayMax7219::Get()->WriteChar((uint8_t) tLtcReaderSource);
 }
 
 bool SourceSelect::Check(void) {

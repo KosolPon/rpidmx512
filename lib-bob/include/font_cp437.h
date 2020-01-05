@@ -1,7 +1,8 @@
 /**
- * @file max7219set.cpp
+ * @file font_cp437.h
+ *
  */
-/* Copyright (C) 2019 by Arjan van Vught mailto:info@raspberrypi-dmx.nl
+/* Copyright (C) 2020 by Arjan van Vught mailto:info@raspberrypi-dmx.nl
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -22,7 +23,26 @@
  * THE SOFTWARE.
  */
 
-#include "max7219set.h"
+#ifndef FONT_CP437_H_
+#define FONT_CP437_H_
 
-Max7219Set::~Max7219Set(void) {
+#include <stdint.h>
+
+#define FONT_CP437_CHAR_W	8
+#define FONT_CP437_CHAR_H	8
+
+extern uint8_t cp437_font[][8];
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+extern uint32_t cp437_font_size(void);
+
+#ifdef __cplusplus
 }
+#endif
+
+
+
+#endif /* FONT_CP437_H_ */
