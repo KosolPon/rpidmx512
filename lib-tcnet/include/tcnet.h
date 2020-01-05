@@ -2,7 +2,7 @@
  * @file tcnet.h
  *
  */
-/* Copyright (C) 2019 by Arjan van Vught mailto:info@raspberrypi-dmx.nl
+/* Copyright (C) 2019-2020 by Arjan van Vught mailto:info@raspberrypi-dmx.nl
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -110,7 +110,7 @@ private:
 	struct TTCNetNodeIP m_tNode;
 	uint32_t m_aHandles[4];
 
-	struct TOptIn m_tOptIn;
+	struct TTCNetPacketOptIn m_tOptIn;
 
 	struct TTCNet m_TTCNet;
 
@@ -121,11 +121,15 @@ private:
 	uint32_t *m_pLTime;
 
 	TCNetTimeCode *m_pTCNetTimeCode;
-	TTCNetTimeCodeType m_tTimeCodeType;
-	bool m_bIsSetTimeCodeType;
+
+	TTCNetTimeCodeType m_tGlobalTimeCodeType;
+
 	float m_fTypeDivider;
+	TTCNetTimeCodeType m_tTimeCodeType;
 
 	static TCNet *s_pThis;
+
+	uint8_t nTmp;
 };
 
 #endif /* TCNET_H_ */

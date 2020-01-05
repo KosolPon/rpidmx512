@@ -2,7 +2,7 @@
  * @file tcnet.cpp
  *
  */
-/* Copyright (C) 2019 by Arjan van Vught mailto:info@raspberrypi-dmx.nl
+/* Copyright (C) 2019-2020 by Arjan van Vught mailto:info@raspberrypi-dmx.nl
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -22,6 +22,10 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
+
+#ifdef NDEBUG
+//#undef NDEBUG
+#endif
 
 #include <stdint.h>
 #include <string.h>
@@ -52,11 +56,8 @@ enum TNodeUnicastPort {
 TCNet *TCNet::s_pThis = 0;
 
 TCNet::TCNet(TTCNetNodeType tNodeType) :
-	m_tLayer(TCNET_LAYER_UNDEFINED),
-	m_pLTime((uint32_t *)&m_TTCNet.TCNetPacket.Time.LMTime),
 	m_pTCNetTimeCode(0),
-	m_tTimeCodeType(TCNET_TIMECODE_TYPE_SMPTE_30FPS),
-	m_fTypeDivider((float) 1000 / 30)
+	m_tGlobalTimeCodeType(TCNET_TIMECODE_TYPE_SMPTE_30FPS)
 {
 	s_pThis = this;
 
@@ -72,6 +73,9 @@ TCNet::TCNet(TTCNetNodeType tNodeType) :
 	m_tOptIn.NodeCount = 1;
 	m_tOptIn.NodeListenerPort = NODE_UNICAST_PORT;
 	memcpy((char *)&m_tOptIn.VendorName, Hardware::Get()->GetWebsiteUrl(), TCNET_VENDOR_NAME_LENGTH);
+
+	SetLayer(TCNET_LAYER_M);
+	SetTimeCodeType(TCNET_TIMECODE_TYPE_SMPTE_30FPS);
 }
 
 TCNet::~TCNet(void) {
@@ -99,45 +103,34 @@ void TCNet::Start(void) {
 }
 
 void TCNet::Stop(void) {
-#if defined(USE_PORT_UNICAST)
-	Network::Get()->End(NODE_UNICAST_PORT);
-#endif
-#if defined(USE_PORT_60002)
-	Network::Get()->End(NODE_BROADCAST_PORT_2);
-#endif
-	Network::Get()->End(NODE_BROADCAST_PORT_1);
-	Network::Get()->End(NODE_BROADCAST_PORT_0);
+//#if defined(USE_PORT_UNICAST)
+//	Network::Get()->End(NODE_UNICAST_PORT);
+//#endif
+//#if defined(USE_PORT_60002)
+//	Network::Get()->End(NODE_BROADCAST_PORT_2);
+//#endif
+//	Network::Get()->End(NODE_BROADCAST_PORT_1);
+//	Network::Get()->End(NODE_BROADCAST_PORT_0);
 }
 
 void TCNet::HandlePort60000Incoming(void) {
 	DEBUG_ENTRY
 
 	const struct TTCNetPacket *packet = &(m_TTCNet.TCNetPacket);
-	const TTCNetMessageType type  = (TTCNetMessageType) packet->OptIn.ManagementHeader.MessageType;
+	const TTCNetMessageType type  = (TTCNetMessageType) packet->ManagementHeader.MessageType;
 
 	DEBUG_PRINTF("MessageType = %d", (int) type);
 
 	if (type == TCNET_MESSAGE_TYPE_STATUS) {
-		DEBUG_PRINTF("m_tTimeCodeType=%d", (int ) m_tTimeCodeType);
+		DEBUG_PRINTF("packet->Status.SMPTEMode=%d", (int ) packet->Status.SMPTEMode);
 
-		if (m_tTimeCodeType != (TTCNetTimeCodeType) packet->Status.SMPTEMode) {
-			m_tTimeCodeType = (TTCNetTimeCodeType) packet->Status.SMPTEMode;
-
-			switch (m_tTimeCodeType) {
-			case TCNET_TIMECODE_TYPE_FILM:
-				m_fTypeDivider = (float) 1000 / 24;
-				break;
-			case TCNET_TIMECODE_TYPE_EBU_25FPS:
-				m_fTypeDivider = 1000 / 25;
-				break;
-			case TCNET_TIMECODE_TYPE_DF:
-				m_fTypeDivider = (float) 1000 / (float) 29.97;
-				break;
-			case TCNET_TIMECODE_TYPE_SMPTE_30FPS:
-				m_fTypeDivider = (float) 1000 / 30;
-				break;
-			default:
-				break;
+		if (packet->Status.SMPTEMode == 25) {
+			if (m_tGlobalTimeCodeType != TCNET_TIMECODE_TYPE_EBU_25FPS) {
+				m_tGlobalTimeCodeType = TCNET_TIMECODE_TYPE_EBU_25FPS;
+			}
+		} else if (packet->Status.SMPTEMode == 30) {
+			if (m_tGlobalTimeCodeType != TCNET_TIMECODE_TYPE_SMPTE_30FPS) {
+				m_tGlobalTimeCodeType = TCNET_TIMECODE_TYPE_SMPTE_30FPS;
 			}
 		}
 
@@ -174,14 +167,14 @@ void TCNet::HandlePort60001Incoming(void) {
 				TimeCode.nMinutes = minutes;
 				TimeCode.nSeconds = seconds;
 				TimeCode.nFrames = frames;
+				TimeCode.nType = m_tTimeCodeType;
 			} else {
-				TimeCode.nHours = packet->Time.TimeCodeHours;
-				TimeCode.nMinutes = packet->Time.TimeCodeMinutes;
-				TimeCode.nSeconds = packet->Time.TimeCodeSeconds;
-				TimeCode.nFrames = packet->Time.TimeCodeFrames;
+				TimeCode.nFrames = packet->Time.LMTimeCode.Frames;
+				TimeCode.nSeconds = packet->Time.LMTimeCode.Seconds;
+				TimeCode.nMinutes = packet->Time.LMTimeCode.Minutes;
+				TimeCode.nHours = packet->Time.LMTimeCode.Hours;
+				TimeCode.nType = m_tGlobalTimeCodeType;
 			}
-
-			TimeCode.nType = m_tTimeCodeType;
 
 			m_pTCNetTimeCode->Handler(&TimeCode);
 		}
@@ -205,7 +198,7 @@ void TCNet::HandleOptInOutgoing(void) {
 	m_tOptIn.ManagementHeader.TimeStamp = Hardware::Get()->Micros();
 	m_tOptIn.Uptime = Hardware::Get()->GetUpTime();
 
-	Network::Get()->SendTo(m_aHandles[0],  (const uint8_t *) &m_tOptIn, (uint16_t) sizeof(struct TOptIn), m_tNode.IPAddressBroadcast, NODE_BROADCAST_PORT_0);
+	Network::Get()->SendTo(m_aHandles[0],  (const uint8_t *) &m_tOptIn, (uint16_t) sizeof(struct TTCNetPacketOptIn), m_tNode.IPAddressBroadcast, NODE_BROADCAST_PORT_0);
 }
 
 int TCNet::Run(void) {
@@ -251,7 +244,7 @@ int TCNet::Run(void) {
 }
 
 void TCNet::SetLayer(TTCNetLayers tLayer) {
-	assert((int) tLayer <= (int )TCNET_LAYER_UNDEFINED);
+	assert((int) tLayer < (int )TCNET_LAYER_UNDEFINED);
 
 	m_tLayer = tLayer;
 	m_pLTime = (uint32_t *)(&m_TTCNet.TCNetPacket.Time.L1Time + (uint32_t) tLayer);
@@ -321,28 +314,20 @@ void TCNet::SetTimeCodeType(TTCNetTimeCodeType tType) {
 	switch (tType) {
 	case TCNET_TIMECODE_TYPE_FILM:
 		m_fTypeDivider = (float) 1000 / 24;
-		m_bIsSetTimeCodeType = true;
 		break;
 	case TCNET_TIMECODE_TYPE_EBU_25FPS:
 		m_fTypeDivider = 1000 / 25;
-		m_bIsSetTimeCodeType = true;
 		break;
 	case TCNET_TIMECODE_TYPE_DF:
 		m_fTypeDivider = (float) 1000 / (float) 29.97;
-		m_bIsSetTimeCodeType = true;
 		break;
 	case TCNET_TIMECODE_TYPE_SMPTE_30FPS:
 		m_fTypeDivider = (float) 1000 / 30;
-		m_bIsSetTimeCodeType = true;
 		break;
 	default:
-		m_fTypeDivider = (float) 1000 / 30;
-		m_tTimeCodeType = TCNET_TIMECODE_TYPE_SMPTE_30FPS;
-		m_bIsSetTimeCodeType = false;
+		return;
 		break;
 	}
 
-	if (m_bIsSetTimeCodeType) {
-		m_tTimeCodeType = tType;
-	}
+	m_tTimeCodeType = tType;
 }
