@@ -42,6 +42,8 @@ public:
 	void Show(const char *pTimecode);
 	void ShowSysTime(const char *pSystemTime);
 
+	void WriteChar(uint8_t nChar, uint8_t nPos=0);
+
 	static LtcDisplayMax72197Segment *Get(void) {
 		return s_pThis;
 	}

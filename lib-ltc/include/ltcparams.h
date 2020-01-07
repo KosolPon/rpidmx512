@@ -98,7 +98,7 @@ enum TLtcParamsMask {
 
 class LtcParamsStore {
 public:
-	virtual ~LtcParamsStore(void);
+	virtual ~LtcParamsStore(void) {}
 
 	virtual void Update(const struct TLtcParams *pTLtcParams)=0;
 	virtual void Copy(struct TLtcParams *pTLtcParams)=0;

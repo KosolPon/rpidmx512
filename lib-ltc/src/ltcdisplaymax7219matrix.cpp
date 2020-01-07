@@ -73,3 +73,7 @@ void LtcDisplayMax7219Matrix::ShowSysTime(const char *pSystemTime) {
 	d8x8matrix_write(&m_DeviceInfo, (const char *)m_aBuffer, SEGMENTS);
 }
 
+void LtcDisplayMax7219Matrix::WriteChar(uint8_t nChar, uint8_t nPos) {
+	// TODO Max7219Matrix::WriteChar
+}
+

@@ -94,18 +94,19 @@ public:
 	void Show(const char *pTimecode);
 	void ShowSysTime(const char *pSystemTime);
 
-	void WriteChar(uint8_t nChar, uint8_t nPos);
+	void WriteChar(uint8_t nChar, uint8_t nPos = 0);
 
 	static LtcDisplayWS28xx *Get(void) {
 		return s_pThis;
 	}
 
+	void SetMessage(const char *pMessage, uint32_t nSize);
+	void SetRGB(uint8_t nRed, uint8_t nGreen, uint8_t nBlue, TLtcDisplayWS28xxColourIndex tIndex);
+
 private:
 	void SetRGB(uint32_t nRGB, TLtcDisplayWS28xxColourIndex tIndex);
-  	void SetRGB(uint8_t nRed, uint8_t nGreen, uint8_t nBlue, TLtcDisplayWS28xxColourIndex tIndex);
 	void SetRGB(const char *pHexString);
 	uint32_t hexadecimalToDecimal(const char *pHexValue, uint32_t nLength = 6);
-	void SetMessage(const char *pMessage, uint32_t nSize);
 	void ShowMessage(void);
 
 private:

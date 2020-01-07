@@ -45,6 +45,8 @@ public:
 	void ShowSysTime(const char *pSystemTime, struct TLtcDisplayRgbColours &tColours, struct TLtcDisplayRgbColours &tColoursColons);
 	void ShowMessage(const char *pMessage , struct TLtcDisplayRgbColours &tColours);
 
+	void WriteChar(uint8_t nChar, uint8_t nPos, struct TLtcDisplayRgbColours &tColours);
+
 private:
 	WS28xxDisplay7Segment *m_pWS28xxDisplay7Segment;
 };

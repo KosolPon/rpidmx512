@@ -67,6 +67,10 @@ void LtcDisplayMax7219::ShowSysTime(const char *pSystemTime) {
 	m_pMax7219Set->ShowSysTime(pSystemTime);
 }
 
+void LtcDisplayMax7219::WriteChar(uint8_t nChar, uint8_t nPos) {
+	m_pMax7219Set->WriteChar(nChar, nPos);
+}
+
 void LtcDisplayMax7219::Print(void) {
 	printf("MAX7219\n");
 	printf(" %s [%d]\n", m_tMax7219Types == LTCDISPLAYMAX7219_TYPE_7SEGMENT ? "7-segment" : "matrix", m_nIntensity);

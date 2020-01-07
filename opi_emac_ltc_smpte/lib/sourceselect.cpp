@@ -39,6 +39,7 @@
 #include "display.h"
 #include "display7segment.h"
 #include "ltcdisplaymax7219.h"
+#include "ltcdisplayws28xx.h"
 
 #include "rotaryencoder.h"
 
@@ -87,8 +88,9 @@ enum TButtons {
 	BUTTON_RESUME = 7
 };
 
-SourceSelect::SourceSelect(TLtcReaderSource tLtcReaderSource):
+SourceSelect::SourceSelect(TLtcReaderSource tLtcReaderSource, struct TLtcDisabledOutputs *ptLtcDisabledOutput):
 	m_tLtcReaderSource(tLtcReaderSource),
+	m_ptLtcDisabledOutputs(ptLtcDisabledOutput),
 	m_bIsConnected(false),
 	m_nPortA(0),
 	m_nPortAPrevious(0),
@@ -148,7 +150,14 @@ void SourceSelect::HandleRotary(uint8_t nInputAB, TLtcReaderSource &tLtcReaderSo
 
 void SourceSelect::UpdateDisaplays(TLtcReaderSource tLtcReaderSource) {
 	Display::Get()->TextStatus(SourceSelectConst::SOURCE[tLtcReaderSource], s_7Segment[tLtcReaderSource]);
-	//LtcDisplayMax7219::Get()->WriteChar((uint8_t) tLtcReaderSource);
+
+	if (!m_ptLtcDisabledOutputs->bMax7219) {
+		LtcDisplayMax7219::Get()->WriteChar((uint8_t) tLtcReaderSource);
+	}
+
+	if(!m_ptLtcDisabledOutputs->bWS28xx) {
+		LtcDisplayWS28xx::Get()->WriteChar((uint8_t) tLtcReaderSource);
+	}
 }
 
 bool SourceSelect::Check(void) {

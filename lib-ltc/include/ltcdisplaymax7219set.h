@@ -36,6 +36,8 @@ public:
 
 	virtual void Show(const char *pTimecode)=0;
 	virtual void ShowSysTime(const char *pSystemTime)=0;
+
+	virtual void WriteChar(uint8_t nChar, uint8_t nPos)=0;
 };
 
 #endif /* LTCDISPLAYMAX7219SET_H_ */

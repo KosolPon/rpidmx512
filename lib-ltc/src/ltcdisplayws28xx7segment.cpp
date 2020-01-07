@@ -113,6 +113,11 @@ void LtcDisplayWS28xx7Segment::ShowMessage(const char *pMessage, struct TLtcDisp
 	m_pWS28xxDisplay7Segment->Show();
 }
 
+void LtcDisplayWS28xx7Segment::WriteChar(uint8_t nChar, uint8_t nPos, struct TLtcDisplayRgbColours &tColours) {
+	m_pWS28xxDisplay7Segment->WriteChar(nChar, nPos, tColours.nRed, tColours.nGreen, tColours.nBlue);
+	m_pWS28xxDisplay7Segment->Show();
+}
+
 void LtcDisplayWS28xx7Segment::Print(void) {
 	printf(" 7-Segment %d Digit(s), %d Colons, %d LEDs\n", WS28XX_NUM_OF_DIGITS, WS28XX_NUM_OF_COLONS, WS28XX_LED_COUNT);
 }

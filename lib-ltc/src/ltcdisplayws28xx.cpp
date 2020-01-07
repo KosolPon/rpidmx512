@@ -258,6 +258,22 @@ void LtcDisplayWS28xx::ShowMessage(void) {
 	m_pLtcDisplayWS28xxSet->ShowMessage(m_aMessage, tColours);
 }
 
+void LtcDisplayWS28xx::WriteChar(uint8_t nChar, uint8_t nPos) {
+	struct TLtcDisplayRgbColours tColours;
+
+	if (!(m_nMaster == 0 || m_nMaster == 255)) {
+		tColours.nRed = (m_nMaster * m_tColours.nRed) / 255 ;
+		tColours.nGreen = (m_nMaster * m_tColours.nGreen) / 255 ;
+		tColours.nBlue = (m_nMaster * m_tColours.nBlue) / 255 ;
+	} else {
+		tColours.nRed = m_tColours.nRed;
+		tColours.nGreen = m_tColours.nGreen;
+		tColours.nBlue = m_tColours.nBlue;
+	}
+
+	m_pLtcDisplayWS28xxSet->WriteChar(nChar, nPos, tColours);
+}
+
 void LtcDisplayWS28xx::Run(void) {
 	if (__builtin_expect((m_bShowMsg), 0)) {
 		if (Hardware::Get()->Millis() - m_nMsgTimer >= MESSAGE_TIME_MS) {

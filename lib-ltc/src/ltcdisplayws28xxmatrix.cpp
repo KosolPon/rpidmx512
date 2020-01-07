@@ -87,6 +87,12 @@ void LtcDisplayWS28xxMatrix::ShowMessage(const char *pMessage, struct TLtcDispla
 	m_pWS28xxDisplayMatrix->Show();
 }
 
+void LtcDisplayWS28xxMatrix::WriteChar(uint8_t nChar, uint8_t nPos, struct TLtcDisplayRgbColours &tColours) {
+	m_pWS28xxDisplayMatrix->SetCursorPos(nPos, 0);
+	m_pWS28xxDisplayMatrix->PutChar(nChar, tColours.nRed, tColours.nGreen, tColours.nBlue);
+	m_pWS28xxDisplayMatrix->Show();
+}
+
 void LtcDisplayWS28xxMatrix::Print(void) {
 	printf(" Matrix %dx%d\n", m_pWS28xxDisplayMatrix->GetMaxPosition(), m_pWS28xxDisplayMatrix->GetMaxLine());
 }

@@ -76,3 +76,9 @@ void LtcDisplayMax72197Segment::ShowSysTime(const char *pSystemTime) {
 	max7219_spi_write_reg(&m_DeviceInfo, MAX7219_REG_DIGIT1, (pSystemTime[7] - '0'));
 	max7219_spi_write_reg(&m_DeviceInfo, MAX7219_REG_DIGIT0, MAX7219_CHAR_BLANK);
 }
+
+void LtcDisplayMax72197Segment::WriteChar(uint8_t nChar, uint8_t nPos) {
+	if (nPos < 8) {
+		max7219_spi_write_reg(&m_DeviceInfo, MAX7219_REG_DIGIT0 + nPos, nChar);
+	}
+}

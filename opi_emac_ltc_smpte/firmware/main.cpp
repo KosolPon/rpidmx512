@@ -179,7 +179,7 @@ void notmain(void) {
 
 	const bool IsAutoStart = ((source == LTC_READER_SOURCE_SYSTIME) && ltcParams.IsAutoStart());
 
-	SourceSelect sourceSelect(source);
+	SourceSelect sourceSelect(source, &tLtcDisabledOutputs);
 
 	if (sourceSelect.Check() && !IsAutoStart) {
 		while (sourceSelect.Wait(source)) {
@@ -239,7 +239,7 @@ void notmain(void) {
 	 * TCNet
 	 */
 
-	const bool bRunTCNet = (source == LTC_READER_SOURCE_TCNET); //  || (!tLtcDisabledOutputs.bTCNet)); // TODO TCNet MASTER implementation
+	const bool bRunTCNet = ((source == LTC_READER_SOURCE_TCNET)); //  || (!tLtcDisabledOutputs.bTCNet));
 
 	TCNet tcnet(source == LTC_READER_SOURCE_TCNET ? TCNET_TYPE_SLAVE : TCNET_TYPE_MASTER);
 	StoreTCNet storetcnet;
