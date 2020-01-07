@@ -45,6 +45,13 @@ enum TTCNetMessageType {
 	TCNET_MESSAGE_TYPE_TIME = 254
 };
 
+enum TTCNetNodeType {
+	TCNET_TYPE_AUTO = 1,
+	TCNET_TYPE_MASTER = 2,
+	TCNET_TYPE_SLAVE = 4,
+	TCNET_TYPE_REPEATER = 8
+};
+
 enum TTCNetNodeName {
 	TCNET_NODE_NAME_LENGTH = 8
 };

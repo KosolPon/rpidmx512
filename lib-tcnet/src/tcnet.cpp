@@ -43,37 +43,34 @@
 
 #define NODE_NAME_DEFAULT	"AvV-OPi"
 
-enum TNodeBroadcastPorts {
-	NODE_BROADCAST_PORT_0 =	60000,
-	NODE_BROADCAST_PORT_1 =	60001,
-	NODE_BROADCAST_PORT_2 =	60002
-};
-
-enum TNodeUnicastPort {
-	NODE_UNICAST_PORT = 65023
-};
-
 TCNet *TCNet::s_pThis = 0;
 
 TCNet::TCNet(TTCNetNodeType tNodeType) :
+	m_bUseTimeCode(false),
 	m_pTCNetTimeCode(0),
-	m_tGlobalTimeCodeType(TCNET_TIMECODE_TYPE_SMPTE_30FPS)
+	m_nSeqTimeMessage(0)
 {
 	s_pThis = this;
+
+	memset((void *)&m_tOptIn, 0, sizeof(struct TTCNetPacketOptIn));
 
 	// Fill the static fields for Opt-IN
 	m_tOptIn.ManagementHeader.ProtocolVersionMajor = 3;
 	m_tOptIn.ManagementHeader.ProtocolVersionMinor = 3;
 	memcpy(m_tOptIn.ManagementHeader.Header, "TCN", 3);
 	m_tOptIn.ManagementHeader.MessageType = (uint8_t) TCNET_MESSAGE_TYPE_OPTIN;
-	SetNodeName((uint8_t *) NODE_NAME_DEFAULT);
 	m_tOptIn.ManagementHeader.SEQ = 0;
 	m_tOptIn.ManagementHeader.NodeType = (uint8_t) tNodeType;
 	m_tOptIn.ManagementHeader.NodeOptions = 0;
 	m_tOptIn.NodeCount = 1;
-	m_tOptIn.NodeListenerPort = NODE_UNICAST_PORT;
-	memcpy((char *)&m_tOptIn.VendorName, Hardware::Get()->GetWebsiteUrl(), TCNET_VENDOR_NAME_LENGTH);
+	m_tOptIn.NodeListenerPort = TCNET_UNICAST_PORT;
+	memcpy((char *)&m_tOptIn.VendorName, "orangepi-dmx.org", TCNET_VENDOR_NAME_LENGTH);
+	memcpy((char *)&m_tOptIn.DeviceName, "LTC SMPTE Node  ", TCNET_DEVICE_NAME_LENGTH);
+	m_tOptIn.DeviceMajorVersion = _TIME_STAMP_YEAR_ - 2000;
+	m_tOptIn.DeviceMinorVersion = _TIME_STAMP_MONTH_;
+	m_tOptIn.DeviceBugVersion = _TIME_STAMP_DAY_;
 
+	SetNodeName((uint8_t *) NODE_NAME_DEFAULT);
 	SetLayer(TCNET_LAYER_M);
 	SetTimeCodeType(TCNET_TIMECODE_TYPE_SMPTE_30FPS);
 }
@@ -82,13 +79,13 @@ TCNet::~TCNet(void) {
 }
 
 void TCNet::Start(void) {
-	m_tNode.IPAddressLocal = Network::Get()->GetIp();
-	m_tNode.IPAddressBroadcast = m_tNode.IPAddressLocal | ~(Network::Get()->GetNetmask());
+	m_tNode.nIPAddressLocal = Network::Get()->GetIp();
+	m_tNode.nIPAddressBroadcast = m_tNode.nIPAddressLocal | ~(Network::Get()->GetNetmask());
 
-	m_aHandles[0] = Network::Get()->Begin(NODE_BROADCAST_PORT_0);
+	m_aHandles[0] = Network::Get()->Begin(TCNET_BROADCAST_PORT_0);
 	assert(m_aHandles[0] >= 0);
 
-	m_aHandles[1] = Network::Get()->Begin(NODE_BROADCAST_PORT_1);
+	m_aHandles[1] = Network::Get()->Begin(TCNET_BROADCAST_PORT_1);
 	assert(m_aHandles[1] >= 0);
 
 #if defined(USE_PORT_60002)
@@ -97,20 +94,15 @@ void TCNet::Start(void) {
 #endif
 
 #if defined(USE_PORT_UNICAST)
-	m_aHandles[3] = Network::Get()->Begin(NODE_UNICAST_PORT);
+	m_aHandles[3] = Network::Get()->Begin(TCNET_UNICAST_PORT);
 	assert(m_aHandles[3] >= 0);
 #endif
 }
 
 void TCNet::Stop(void) {
-//#if defined(USE_PORT_UNICAST)
-//	Network::Get()->End(NODE_UNICAST_PORT);
-//#endif
-//#if defined(USE_PORT_60002)
-//	Network::Get()->End(NODE_BROADCAST_PORT_2);
-//#endif
-//	Network::Get()->End(NODE_BROADCAST_PORT_1);
-//	Network::Get()->End(NODE_BROADCAST_PORT_0);
+	DEBUG_ENTRY
+
+	DEBUG_EXIT
 }
 
 void TCNet::HandlePort60000Incoming(void) {
@@ -121,23 +113,10 @@ void TCNet::HandlePort60000Incoming(void) {
 
 	DEBUG_PRINTF("MessageType = %d", (int) type);
 
-	if (type == TCNET_MESSAGE_TYPE_STATUS) {
-		DEBUG_PRINTF("packet->Status.SMPTEMode=%d", (int ) packet->Status.SMPTEMode);
-
-		if (packet->Status.SMPTEMode == 25) {
-			if (m_tGlobalTimeCodeType != TCNET_TIMECODE_TYPE_EBU_25FPS) {
-				m_tGlobalTimeCodeType = TCNET_TIMECODE_TYPE_EBU_25FPS;
-			}
-		} else if (packet->Status.SMPTEMode == 30) {
-			if (m_tGlobalTimeCodeType != TCNET_TIMECODE_TYPE_SMPTE_30FPS) {
-				m_tGlobalTimeCodeType = TCNET_TIMECODE_TYPE_SMPTE_30FPS;
-			}
-		}
-
-		return;
-	}
-
-	if (type != TCNET_MESSAGE_TYPE_OPTIN) {
+	if (type == TCNET_MESSAGE_TYPE_OPTIN) {
+#ifndef NDEBUG
+		DumpOptIn();
+#endif
 		DEBUG_EXIT
 		return;
 	}
@@ -147,33 +126,48 @@ void TCNet::HandlePort60000Incoming(void) {
 
 void TCNet::HandlePort60001Incoming(void) {
 	if (__builtin_expect((m_pTCNetTimeCode != 0), 1)) {
-		const struct TTCNetPacket *packet = &(m_TTCNet.TCNetPacket);
-
-		if ((TTCNetMessageType) packet->ManagementHeader.MessageType == TCNET_MESSAGE_TYPE_TIME) {
+		if ((TTCNetMessageType) m_TTCNet.TCNetPacket.ManagementHeader.MessageType == TCNET_MESSAGE_TYPE_TIME) {
 			struct TTCNetTimeCode TimeCode;
 
-			if (m_tLayer != TCNET_LAYER_UNDEFINED) {
+			if (!m_bUseTimeCode) {
 				uint32_t nTime = *m_pLTime;
 
-				const uint32_t hours = nTime / (uint32_t) 3600000;
-				nTime -= hours * (uint32_t) 3600000;
-				const uint32_t minutes = nTime / (uint32_t) 60000;
-				nTime -= minutes * (uint32_t) 60000;
-				const uint32_t seconds = nTime / (uint32_t) 1000;
-				const uint32_t millis = nTime - seconds * (uint32_t) 1000;
-				const uint32_t frames = (float) millis / m_fTypeDivider;
+				const uint32_t nHours = nTime / (uint32_t) 3600000;
+				nTime -= nHours * (uint32_t) 3600000;
+				const uint32_t nMinutes = nTime / (uint32_t) 60000;
+				nTime -= nMinutes * (uint32_t) 60000;
+				const uint32_t nSeconds = nTime / (uint32_t) 1000;
+				const uint32_t nMillis = nTime - nSeconds * (uint32_t) 1000;
+				const uint32_t nFrames = (float) nMillis / m_fTypeDivider;
 
-				TimeCode.nHours = hours;
-				TimeCode.nMinutes = minutes;
-				TimeCode.nSeconds = seconds;
-				TimeCode.nFrames = frames;
+				TimeCode.nFrames = nFrames;
+				TimeCode.nSeconds = nSeconds;
+				TimeCode.nMinutes = nMinutes;
+				TimeCode.nHours = nHours;
 				TimeCode.nType = m_tTimeCodeType;
 			} else {
-				TimeCode.nFrames = packet->Time.LMTimeCode.Frames;
-				TimeCode.nSeconds = packet->Time.LMTimeCode.Seconds;
-				TimeCode.nMinutes = packet->Time.LMTimeCode.Minutes;
-				TimeCode.nHours = packet->Time.LMTimeCode.Hours;
-				TimeCode.nType = m_tGlobalTimeCodeType;
+				TimeCode.nFrames = m_pLTimeCode->Frames;
+				TimeCode.nSeconds = m_pLTimeCode->Seconds;
+				TimeCode.nMinutes = m_pLTimeCode->Minutes;
+				TimeCode.nHours = m_pLTimeCode->Hours;
+
+				uint8_t nSMPTEMode = m_pLTimeCode->SMPTEMode;
+
+				if (nSMPTEMode < 24) {
+					nSMPTEMode = m_TTCNet.TCNetPacket.Time.SMPTEMode;
+				}
+
+				if (nSMPTEMode == 24) {
+					TimeCode.nType = TCNET_TIMECODE_TYPE_FILM;
+				} else if (nSMPTEMode == 25) {
+					TimeCode.nType = TCNET_TIMECODE_TYPE_EBU_25FPS;
+				} else if (nSMPTEMode == 29) {
+					TimeCode.nType = TCNET_TIMECODE_TYPE_DF;
+				} else if (nSMPTEMode == 30) {
+					TimeCode.nType = TCNET_TIMECODE_TYPE_SMPTE_30FPS;
+				} else {
+					TimeCode.nType = TCNET_TIMECODE_TYPE_EBU_25FPS;
+				}
 			}
 
 			m_pTCNetTimeCode->Handler(&TimeCode);
@@ -198,10 +192,10 @@ void TCNet::HandleOptInOutgoing(void) {
 	m_tOptIn.ManagementHeader.TimeStamp = Hardware::Get()->Micros();
 	m_tOptIn.Uptime = Hardware::Get()->GetUpTime();
 
-	Network::Get()->SendTo(m_aHandles[0],  (const uint8_t *) &m_tOptIn, (uint16_t) sizeof(struct TTCNetPacketOptIn), m_tNode.IPAddressBroadcast, NODE_BROADCAST_PORT_0);
+	Network::Get()->SendTo(m_aHandles[0],  (const uint8_t *) &m_tOptIn, (uint16_t) sizeof(struct TTCNetPacketOptIn), m_tNode.nIPAddressBroadcast, TCNET_BROADCAST_PORT_0);
 }
 
-int TCNet::Run(void) {
+void TCNet::Run(void) {
 	const char *packet = (char *) &(m_TTCNet.TCNetPacket);
 	uint16_t nForeignPort;
 
@@ -236,21 +230,23 @@ int TCNet::Run(void) {
 	m_nCurrentMillis = Hardware::Get()->Millis();
 
 	if (__builtin_expect(((m_nCurrentMillis - m_nPreviousMillis) >= 1000), 0)) {
-		HandleOptInOutgoing();
 		m_nPreviousMillis = m_nCurrentMillis;
+		HandleOptInOutgoing();
 	}
-
-	return 0;
 }
 
 void TCNet::SetLayer(TTCNetLayers tLayer) {
-	assert((int) tLayer < (int )TCNET_LAYER_UNDEFINED);
+	if(tLayer >= TCNET_LAYER_UNDEFINED) { // TODO Backward compatibility, subject for removal
+		tLayer = TCNET_LAYER_M;
+		m_bUseTimeCode = true;
+	}
 
 	m_tLayer = tLayer;
 	m_pLTime = (uint32_t *)(&m_TTCNet.TCNetPacket.Time.L1Time + (uint32_t) tLayer);
+	m_pLTimeCode = (struct TTCNetPacketTimeTimeCode *)((uint32_t) &m_TTCNet.TCNetPacket.Time.L1TimeCode + (uint32_t) tLayer * sizeof(struct TTCNetPacketTimeTimeCode));
 }
 
-void TCNet::SetNodeName(uint8_t *pNodeName) {
+void TCNet::SetNodeName(const uint8_t *pNodeName) {
 	strncpy((char *)m_tOptIn.ManagementHeader.NodeName, (const char *)pNodeName, TCNET_NODE_NAME_LENGTH);
 }
 
@@ -278,7 +274,6 @@ char TCNet::GetLayerName(TTCNetLayers tLayer) {
 		break;
 	}
 
-	__builtin_unreachable ();
 	return ' ';
 }
 
